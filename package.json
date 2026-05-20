@@ -1,0 +1,12 @@
+{
+  "name": "drone-vision-system",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^41.2.1",
+    "zeromq": "^6.5.0"
+  }
+}

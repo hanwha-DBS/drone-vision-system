@@ -1,0 +1,29 @@
+{
+  "image_count": 0,
+  "prompts": [
+    "person",
+    "dump truck",
+    "tanker truck",
+    "truck",
+    "bus",
+    "excavator",
+    "loader"
+  ],
+  "grounding_dino": {
+    "config_path": "third_party/GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py",
+    "weights_path": "third_party/GroundingDINO/weights/groundingdino_swint_ogc.pth",
+    "box_threshold": 0.28,
+    "text_threshold": 0.22
+  },
+  "sam3": {
+    "enabled": false,
+    "checkpoint_path": "third_party/sam3/checkpoints/sam3.pt"
+  },
+  "label_map": {
+    "person": 0,
+    "dump truck": 1,
+    "tanker truck": 2,
+    "truck": 3
+  },
+  "images": []
+}

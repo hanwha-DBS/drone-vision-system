@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>드론 영상 샘플링 분석 관제</title>
+    <style>
+        :root {
+            --bg: #0c131a;
+            --panel: rgba(20, 28, 37, 0.92);
+            --panel-soft: rgba(255, 255, 255, 0.03);
+            --border: rgba(140, 170, 196, 0.16);
+            --text: #eef4fb;
+            --muted: #94aabc;
+            --accent: #57c7ff;
+            --safe: #2ecf8d;
+            --warn: #ff8f5b;
+            --critical: #ff556b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Malgun Gothic", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top right, rgba(87, 199, 255, 0.10), transparent 24%),
+                radial-gradient(circle at top left, rgba(46, 207, 141, 0.10), transparent 24%),
+                linear-gradient(180deg, #061017 0%, var(--bg) 60%);
+        }
+
+        .app {
+            max-width: 1540px;
+            margin: 0 auto;
+            padding: 28px 24px 40px;
+        }
+
+        .panel,
+        .controls,
+        .topbar {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            padding: 24px 26px;
+            margin-bottom: 18px;
+            align-items: flex-start;
+        }
+
+        .eyebrow {
+            margin-bottom: 10px;
+            font-size: 12px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 38px;
+            line-height: 1.08;
+        }
+
+        .subtitle {
+            margin: 0;
+            max-width: 780px;
+            line-height: 1.7;
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        .pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .pill {
+            padding: 10px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--muted);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .pill.ready {
+            color: #b5ffdf;
+            border-color: rgba(46, 207, 141, 0.40);
+            background: rgba(46, 207, 141, 0.14);
+        }
+
+        .pill.error {
+            color: #ffd7db;
+            border-color: rgba(255, 85, 107, 0.42);
+            background: rgba(255, 85, 107, 0.14);
+        }
+
+        .risk-clear {
+            color: #b5ffdf;
+            border-color: rgba(46, 207, 141, 0.40);
+            background: rgba(46, 207, 141, 0.14);
+        }
+
+        .risk-notice {
+            color: #ffe3a2;
+            border-color: rgba(240, 182, 69, 0.42);
+            background: rgba(240, 182, 69, 0.14);
+        }
+
+        .risk-warning {
+            color: #ffd3bf;
+            border-color: rgba(255, 143, 91, 0.44);
+            background: rgba(255, 143, 91, 0.14);
+        }
+
+        .risk-critical {
+            color: #ffd1d7;
+            border-color: rgba(255, 85, 107, 0.42);
+            background: rgba(255, 85, 107, 0.16);
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 20px;
+            margin-bottom: 18px;
+        }
+
+        button {
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform 0.16s ease, opacity 0.16s ease, background 0.16s ease;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        #analyzeBtn {
+            padding: 14px 24px;
+            font-size: 15px;
+            color: #04110b;
+            background: linear-gradient(135deg, #29cf8f, #7af0bc);
+        }
+
+        #stopBtn {
+            padding: 14px 22px;
+            font-size: 15px;
+            color: white;
+            background: linear-gradient(135deg, #95414a, #ff6176);
+        }
+
+        .ghost-btn {
+            padding: 10px 14px;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+        }
+
+        .interval-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 16px;
+            background: var(--panel-soft);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .interval-box label {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .interval-box input[type="range"] {
+            width: 160px;
+        }
+
+        .selection {
+            flex: 1 1 280px;
+            color: var(--muted);
+            line-height: 1.55;
+            word-break: break-all;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.9fr);
+            gap: 18px;
+        }
+
+        .panel {
+            padding: 18px;
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .section-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .section-note {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .viewer {
+            width: 100%;
+            border-radius: 18px;
+            overflow: hidden;
+            background: #04090d;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        #liveVideo,
+        .snapshot-image {
+            display: block;
+            width: 100%;
+            background: #04090d;
+        }
+
+        #liveVideo {
+            min-height: 420px;
+            object-fit: contain;
+        }
+
+        .snapshot-image {
+            min-height: 220px;
+            object-fit: contain;
+        }
+
+        .status-banner {
+            margin-top: 14px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .metric-grid {
+            margin-top: 16px;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .metric {
+            padding: 14px;
+            border-radius: 18px;
+            background: var(--panel-soft);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .metric-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .metric-value {
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .metric-value.small {
+            font-size: 20px;
+        }
+
+        .progress-wrap {
+            margin-top: 16px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #29cf8f, #6fe4ff);
+            transition: width 0.15s linear;
+        }
+
+        .right-stack {
+            display: grid;
+            gap: 18px;
+        }
+
+        .snapshot-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .snapshot-card {
+            padding: 12px;
+            border-radius: 18px;
+            background: var(--panel-soft);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .snapshot-title {
+            margin-bottom: 10px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .object-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .object-chip {
+            padding: 8px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 12px;
+        }
+
+        .zoomable {
+            cursor: zoom-in;
+        }
+
+        .event-strip {
+            margin-top: 18px;
+        }
+
+        .event-scroll {
+            max-height: 560px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .event-scroll::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .event-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 999px;
+        }
+
+        .event-list {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .event-item {
+            padding: 12px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .event-item img {
+            width: 100%;
+            display: block;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .event-title {
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .event-body,
+        .meta-text {
+            color: var(--muted);
+            line-height: 1.55;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .empty {
+            color: var(--muted);
+            padding: 12px 0 4px;
+        }
+
+        .accent {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .image-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(2, 8, 14, 0.86);
+            z-index: 1000;
+        }
+
+        .image-modal.open {
+            display: flex;
+        }
+
+        .image-modal-card {
+            width: min(1180px, 100%);
+            max-height: calc(100vh - 48px);
+            padding: 18px;
+            border-radius: 24px;
+            background: #08111a;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 28px 70px rgba(0, 0, 0, 0.36);
+        }
+
+        .modal-topbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .modal-image {
+            display: block;
+            width: 100%;
+            max-height: calc(100vh - 180px);
+            object-fit: contain;
+            border-radius: 18px;
+            background: #02060a;
+        }
+
+        .modal-caption {
+            margin-top: 12px;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        @media (max-width: 1180px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .app {
+                padding: 18px 14px 28px;
+            }
+
+            h1 {
+                font-size: 30px;
+            }
+
+            .topbar {
+                flex-direction: column;
+            }
+
+            .pills {
+                justify-content: flex-start;
+            }
+
+            .metric-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .event-list {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <section class="topbar">
+            <div>
+                <div class="eyebrow">Sampling Based Drone Analysis</div>
+                <h1>드론 영상 샘플링 분석 관제</h1>
+                <p class="subtitle">
+                    좌측은 원본 영상을 1배속으로 계속 재생하고, 우측은 지정한 간격마다 캡처한 스냅샷만 고정밀 분석합니다.
+                    사람과 차량 이벤트는 별도 저장되어 실무 관제 화면처럼 빠르게 확인할 수 있습니다.
+                </p>
+            </div>
+            <div class="pills">
+                <div id="engineStatus" class="pill">엔진 준비 중...</div>
+                <div id="deviceBadge" class="pill">device -</div>
+                <div id="profileBadge" class="pill">profile -</div>
+                <div id="riskBadge" class="pill risk-clear">CLEAR</div>
+            </div>
+        </section>
+
+        <section class="controls">
+            <button id="analyzeBtn" disabled>드론 영상 선택 후 분석 시작</button>
+            <button id="stopBtn" disabled>현재 분석 중지</button>
+            <div class="interval-box">
+                <label for="intervalRange">분석 간격</label>
+                <input id="intervalRange" type="range" min="1" max="10" value="3" />
+                <span id="intervalValue" class="accent">3초</span>
+            </div>          
+            <div id="selectedVideo" class="selection">선택된 영상이 없습니다.</div>
+        </section>
+
+        <div class="main-grid">
+            <section class="panel">
+                <div class="section-head">
+                    <div>
+                        <div class="section-title">실시간 원본 영상</div>
+                        <div id="status" class="section-note">Python 엔진과 모델을 준비하고 있습니다.</div>
+                    </div>
+                    <div id="streamInfo" class="pill">stream idle</div>
+                </div>
+
+                <div class="viewer">
+                    <video id="liveVideo" muted playsinline preload="auto"></video>
+                </div>
+
+                <div id="riskSummary" class="status-banner">현재 감지된 사람이나 차량이 없습니다.</div>
+
+                <div class="metric-grid">
+                    <div class="metric">
+                        <span class="metric-label">현재 사람</span>
+                        <div id="currentPersons" class="metric-value">0</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">현재 차량</span>
+                        <div id="currentVehicles" class="metric-value">0</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">원본 FPS</span>
+                        <div id="streamFps" class="metric-value small">0.0</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">추론 FPS</span>
+                        <div id="inferenceFps" class="metric-value small">0.0</div>
+                    </div>
+                </div>
+
+                <div class="metric-grid">
+                    <div class="metric">
+                        <span class="metric-label">스냅샷 횟수</span>
+                        <div id="snapshotCount" class="metric-value small">0</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">분석 완료 횟수</span>
+                        <div id="analysisCount" class="metric-value small">0</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">분석 프레임</span>
+                        <div id="frameCounter" class="metric-value small">0 / 0</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">영상 시간</span>
+                        <div id="videoTime" class="metric-value small">0.0s</div>
+                    </div>
+                </div>
+
+                <div class="progress-wrap">
+                    <div class="progress-header">
+                        <span id="progressText">대기 중</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                </div>
+
+                <div id="resultPath" class="meta-text">감지 결과는 results/events 폴더에 저장됩니다.</div>
+            </section>
+
+            <aside class="right-stack">
+                <section class="panel">
+                    <div class="section-head">
+                        <div>
+                            <div class="section-title">캡처 스냅샷</div>
+                            <div id="snapshotTimestamp" class="section-note">아직 캡처된 스냅샷이 없습니다.</div>
+                        </div>
+                        <div id="eventCountBadge" class="pill">이벤트 0건</div>
+                    </div>
+
+                    <div class="snapshot-grid">
+                        <div class="snapshot-card">
+                            <div class="snapshot-title">원본 스냅샷</div>
+                            <div class="viewer">
+                                <img id="snapshotImage" class="snapshot-image zoomable" alt="원본 스냅샷" />
+                            </div>
+                        </div>
+                        <div class="snapshot-card">
+                            <div class="snapshot-title">분석 결과</div>
+                            <div class="viewer">
+                                <img id="analysisImage" class="snapshot-image zoomable" alt="분석 결과" />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="section-head">
+                        <div class="section-title">감지 객체</div>
+                        <div id="riskLevelText" class="pill risk-clear">clear</div>
+                    </div>
+                    <div id="objectList" class="object-list">
+                        <div class="object-chip">감지된 객체 없음</div>
+                    </div>
+                    <div id="latestResultMeta" class="meta-text" style="margin-top: 14px;">
+                        분석 결과가 여기에 표시됩니다.
+                    </div>
+                </section>
+            </aside>
+        </div>
+
+        <section class="panel event-strip">
+            <div class="section-head">
+                <div>
+                    <div class="section-title">최근 이벤트 이미지</div>
+                    <div class="section-note">사람 또는 차량이 감지되면 저장된 이미지가 아래에 쌓입니다.</div>
+                </div>
+                <div class="section-actions">
+                    <button id="openEventFolderBtn" class="ghost-btn" type="button">저장 폴더 열기</button>
+                </div>
+            </div>
+            <div class="event-scroll">
+                <div id="recentEvents" class="event-list">
+                    <div class="empty">아직 저장된 이벤트가 없습니다.</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="imageModal" class="image-modal">
+        <div class="image-modal-card">
+            <div class="modal-topbar">
+                <div class="section-title">이미지 확대 보기</div>
+                <button id="closeModalBtn" class="ghost-btn" type="button">닫기</button>
+            </div>
+            <img id="modalImage" class="modal-image" alt="확대 이미지" />
+            <div id="modalCaption" class="modal-caption"></div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const path = require('path');
+
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const intervalRange = document.getElementById('intervalRange');
+        const intervalValue = document.getElementById('intervalValue');        
+        const selectedVideo = document.getElementById('selectedVideo');
+        const statusDiv = document.getElementById('status');
+        const engineStatus = document.getElementById('engineStatus');
+        const deviceBadge = document.getElementById('deviceBadge');
+        const profileBadge = document.getElementById('profileBadge');
+        const riskBadge = document.getElementById('riskBadge');
+        const riskLevelText = document.getElementById('riskLevelText');
+        const streamInfo = document.getElementById('streamInfo');
+        const riskSummary = document.getElementById('riskSummary');
+        const liveVideo = document.getElementById('liveVideo');
+        const snapshotImage = document.getElementById('snapshotImage');
+        const analysisImage = document.getElementById('analysisImage');
+        const snapshotTimestamp = document.getElementById('snapshotTimestamp');
+        const latestResultMeta = document.getElementById('latestResultMeta');
+        const objectList = document.getElementById('objectList');
+        const currentPersons = document.getElementById('currentPersons');
+        const currentVehicles = document.getElementById('currentVehicles');
+        const streamFps = document.getElementById('streamFps');
+        const inferenceFps = document.getElementById('inferenceFps');
+        const snapshotCount = document.getElementById('snapshotCount');
+        const analysisCount = document.getElementById('analysisCount');
+        const frameCounter = document.getElementById('frameCounter');
+        const videoTime = document.getElementById('videoTime');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const progressPercent = document.getElementById('progressPercent');
+        const resultPath = document.getElementById('resultPath');
+        const eventCountBadge = document.getElementById('eventCountBadge');
+        const recentEvents = document.getElementById('recentEvents');
+        const openEventFolderBtn = document.getElementById('openEventFolderBtn');
+        const imageModal = document.getElementById('imageModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const modalImage = document.getElementById('modalImage');
+        const modalCaption = document.getElementById('modalCaption');
+
+        let pollTimer = null;
+        let isProcessing = false;
+        let latestState = null;
+
+        function formatNumber(value, digits = 0) {
+            const number = Number.isFinite(value) ? value : Number(value || 0);
+            return Number.isFinite(number) ? number.toFixed(digits) : (0).toFixed(digits);
+        }
+
+        function toFileUrl(filePath) {
+            return encodeURI(`file:///${String(filePath).replace(/\\/g, '/')}`);
+        }
+
+        function escapeHtml(text) {
+            return String(text ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function updateIntervalLabel() {
+            intervalValue.textContent = `${intervalRange.value}초`;
+        }
+
+        function riskClass(level) {
+            if (level === 'critical') return 'risk-critical';
+            if (level === 'warning') return 'risk-warning';
+            if (level === 'notice') return 'risk-notice';
+            return 'risk-clear';
+        }
+
+        function setRisk(level) {
+            riskBadge.className = `pill ${riskClass(level)}`;
+            riskBadge.textContent = String(level || 'clear').toUpperCase();
+            riskLevelText.className = `pill ${riskClass(level)}`;
+            riskLevelText.textContent = String(level || 'clear');
+        }
+
+        function setEngineReady(ready, response = null) {
+            analyzeBtn.disabled = !ready || isProcessing;
+            engineStatus.className = 'pill';
+
+            if (ready) {
+                engineStatus.textContent = '엔진 준비 완료';
+                engineStatus.classList.add('ready');
+            } else {
+                engineStatus.textContent = '엔진 준비 중...';
+            }
+
+            if (response) {
+                deviceBadge.textContent = `device ${response.device || '-'}`;
+                profileBadge.textContent = response.profile_name ? `profile ${response.profile_name}` : 'profile -';
+            }
+        }
+
+        function startPolling() {
+            stopPolling();
+            pollTimer = setInterval(refreshVideoStatus, 250);
+        }
+
+        function stopPolling() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        }
+
+        function getReadableLabel(item) {
+            const raw = String(item.display_label || item.label || 'object');
+            const normalized = String(item.label || raw);
+
+            if (normalized === 'person') {
+                return raw === 'person' ? 'person' : `person / ${raw}`;
+            }
+
+            if (normalized === 'vehicle' && raw !== 'vehicle') {
+                return `vehicle / ${raw}`;
+            }
+
+            return raw;
+        }
+
+        function resolveEventDirectory(state) {
+            if (!state) return '';
+            if (state.event_directory) return state.event_directory;
+            if (state.latest_event_path) return path.dirname(state.latest_event_path);
+            const latestResultPath = state.latest_result && state.latest_result.image_path;
+            return latestResultPath ? path.dirname(latestResultPath) : '';
+        }
+
+        function openPreviewModal(src, caption) {
+            if (!src) return;
+            modalImage.src = src;
+            modalCaption.textContent = caption || '';
+            imageModal.classList.add('open');
+        }
+
+        function closePreviewModal() {
+            imageModal.classList.remove('open');
+            modalImage.removeAttribute('src');
+            modalCaption.textContent = '';
+        }
+
+        function bindZoomableImage(img, captionBuilder) {
+            img.addEventListener('click', () => {
+                if (!img.src) return;
+                openPreviewModal(img.src, captionBuilder());
+            });
+        }
+
+        function renderDetections(result) {
+            const detections = (result && Array.isArray(result.detections)) ? result.detections : [];
+
+            if (detections.length === 0) {
+                objectList.innerHTML = '<div class="object-chip">감지된 객체 없음</div>';
+                latestResultMeta.textContent = '최근 분석 프레임에서 감지된 사람이나 차량이 없습니다.';
+                return;
+            }
+
+            objectList.innerHTML = detections.map((item) => {
+                const readable = escapeHtml(getReadableLabel(item));
+                return `<div class="object-chip">${readable} ${Number(item.score || 0).toFixed(2)}</div>`;
+            }).join('');
+
+            const labels = [...new Set(detections.map(getReadableLabel))].join(', ');
+            latestResultMeta.innerHTML = [
+                `분석 시각: <span class="accent">${escapeHtml(result.timestamp || '-')}</span>`,
+                `위험 단계: <span class="accent">${escapeHtml(result.risk_level || 'clear')}</span>`,
+                `사람 ${Number(result.person_count || 0)}명 · 차량 ${Number(result.vehicle_count || 0)}대`,
+                `감지 라벨: ${escapeHtml(labels || '없음')}`,
+                `분석 모드: <span class="accent">${escapeHtml(result.analysis_mode || 'unknown')}</span>`,
+                `저장 이미지: ${escapeHtml(result.image_path || '없음')}`,
+            ].join('<br>');
+        }
+
+        function renderRecentEvents(events) {
+            if (!events || events.length === 0) {
+                recentEvents.innerHTML = '<div class="empty">아직 저장된 이벤트가 없습니다.</div>';
+                return;
+            }
+
+            recentEvents.innerHTML = events.map((event, index) => {
+                const image = event.path
+                    ? `<img class="zoomable" src="${toFileUrl(event.path)}?t=${encodeURIComponent(event.frame_index || index)}" alt="event-${index}" data-caption="${escapeHtml(`${event.timestamp || '-'} / ${event.path || ''}`)}">`
+                    : '';
+                const labels = Array.isArray(event.labels) && event.labels.length > 0
+                    ? escapeHtml(event.labels.join(', '))
+                    : 'person / vehicle';
+                return `
+                    <div class="event-item">
+                        ${image}
+                        <div class="event-title">${escapeHtml(String(event.risk_level || 'clear').toUpperCase())} / frame ${Number(event.frame_index || 0)}</div>
+                        <div class="event-body">
+                            사람 ${Number(event.persons || 0)}명 · 차량 ${Number(event.vehicles || 0)}대<br>
+                            ${escapeHtml(event.timestamp || '-')}<br>
+                            ${labels}<br>
+                            ${escapeHtml(event.path || '')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            recentEvents.querySelectorAll('img[data-caption]').forEach((img) => {
+                img.addEventListener('click', () => {
+                    openPreviewModal(img.src, img.dataset.caption || '');
+                });
+            });
+        }
+
+        async function checkModelStatus() {
+            const response = await ipcRenderer.invoke('check-engine-status');
+
+            if (response.model_loaded) {
+                setEngineReady(true, response);
+                if (!isProcessing) {
+                    statusDiv.textContent = '모델 준비가 완료되었습니다. 드론 영상을 선택해 주세요.';
+                }
+            } else {
+                setEngineReady(false, response);
+                statusDiv.textContent = '아직 모델을 로딩 중입니다.';
+            }
+        }
+
+        async function refreshVideoStatus() {
+            const state = await ipcRenderer.invoke('get-video-analysis-status');
+            if (!state || state.status === 'error') return;
+
+            latestState = state;
+            openEventFolderBtn.disabled = !resolveEventDirectory(state);
+
+            currentPersons.textContent = formatNumber(state.current_persons || 0);
+            currentVehicles.textContent = formatNumber(state.current_vehicle_like_objects || 0);
+            streamFps.textContent = formatNumber(state.stream_fps || 0, 1);
+            inferenceFps.textContent = formatNumber(state.inference_fps || 0, 1);
+            snapshotCount.textContent = formatNumber(state.snapshot_count || 0);
+            analysisCount.textContent = formatNumber(state.analysis_count || 0);
+            frameCounter.textContent = `${formatNumber(state.processed_frames || 0)} / ${formatNumber(state.total_frames || 0)}`;
+            videoTime.textContent = `${formatNumber(state.current_video_time || 0, 1)}s`;
+            streamInfo.textContent = `stream ${formatNumber(state.source_fps || 0, 1)}fps / sample ${formatNumber(state.analysis_interval_seconds || 0)}s`;
+            riskSummary.textContent = state.risk_summary || '현재 감지된 사람이나 차량이 없습니다.';
+            eventCountBadge.textContent = `이벤트 ${formatNumber(state.event_count || 0)}건`;
+            setRisk(state.risk_level || 'clear');
+
+            const progress = Math.max(0, Math.min(100, Number(state.progress || 0)));
+            progressFill.style.width = `${progress}%`;
+            progressPercent.textContent = `${formatNumber(progress)}%`;
+
+            if (state.latest_snapshot_base64) {
+                snapshotImage.src = `data:image/jpeg;base64,${state.latest_snapshot_base64}`;
+            }
+
+            if (state.latest_result_base64) {
+                analysisImage.src = `data:image/jpeg;base64,${state.latest_result_base64}`;
+            }
+
+            if (state.latest_snapshot_timestamp) {
+                snapshotTimestamp.textContent = state.analysis_pending
+                    ? `${state.latest_snapshot_timestamp} · 분석 중`
+                    : state.latest_snapshot_timestamp;
+            }
+
+            if (state.latest_result) {
+                renderDetections(state.latest_result);
+                if (state.latest_result.is_final_result === false) {
+                    latestResultMeta.innerHTML += '<br>현재 결과는 빠른 1차 분석 결과입니다.';
+                } else if (state.analysis_pending) {
+                    latestResultMeta.innerHTML += `<br>최신 스냅샷 분석 상태: <span class="accent">${escapeHtml(state.analysis_mode || 'pending')}</span>`;
+                }
+            }
+
+            renderRecentEvents(state.recent_events || []);
+
+            const eventDirectory = resolveEventDirectory(state);
+            if (state.latest_event_path) {
+                resultPath.textContent = `최근 이벤트 이미지: ${state.latest_event_path}`;
+            } else if (eventDirectory) {
+                resultPath.textContent = `감지 결과는 ${eventDirectory} 폴더에 저장됩니다.`;
+            } else {
+                resultPath.textContent = '감지 결과는 results/events 폴더에 저장됩니다.';
+            }
+
+            if (state.status === 'processing') {
+                isProcessing = true;
+                analyzeBtn.disabled = true;
+                stopBtn.disabled = false;
+                progressText.textContent = '실시간 분석 중';
+                statusDiv.innerHTML = `원본 영상은 계속 재생 중이고, <span class="accent">${formatNumber(state.analysis_interval_seconds || 0)}</span>초 간격으로 스냅샷 분석을 수행합니다.`;
+                return;
+            }
+
+            if (state.status === 'completed') {
+                isProcessing = false;
+                analyzeBtn.disabled = false;
+                stopBtn.disabled = true;
+                progressText.textContent = '분석 완료';
+                statusDiv.innerHTML = `분석이 완료되었습니다. 총 <span class="accent">${formatNumber(state.analysis_count || 0)}</span>회 분석했습니다.`;
+                stopPolling();
+                return;
+            }
+
+            if (state.status === 'stopped') {
+                isProcessing = false;
+                analyzeBtn.disabled = false;
+                stopBtn.disabled = true;
+                progressText.textContent = '중지됨';
+                statusDiv.textContent = '사용자 요청으로 분석을 중지했습니다.';
+                stopPolling();
+                return;
+            }
+
+            if (state.status === 'error') {
+                isProcessing = false;
+                analyzeBtn.disabled = false;
+                stopBtn.disabled = true;
+                progressText.textContent = '오류';
+                statusDiv.textContent = `분석 중 오류가 발생했습니다: ${state.message || '알 수 없는 오류'}`;
+                stopPolling();
+            }
+        }
+
+        ipcRenderer.on('engine-ready', () => {
+            engineStatus.className = 'pill ready';
+            engineStatus.textContent = '엔진 준비 완료';
+            statusDiv.textContent = '엔진 준비가 완료되었습니다. 드론 영상을 선택해 주세요.';
+        });
+
+        ipcRenderer.on('engine-crashed', (_, code) => {
+            engineStatus.className = 'pill error';
+            engineStatus.textContent = '엔진 오류';
+            analyzeBtn.disabled = true;
+            stopBtn.disabled = true;
+            statusDiv.textContent = `Python 엔진이 종료되었습니다. 코드: ${code}`;
+            stopPolling();
+        });
+
+        analyzeBtn.addEventListener('click', async () => {
+            const response = await ipcRenderer.invoke('start-video-analysis', {
+                analysis_interval_seconds: Number(intervalRange.value),
+            });
+
+            if (!response) {
+                statusDiv.textContent = '영상 선택을 취소했습니다.';
+                return;
+            }
+
+            if (response.status !== 'accepted') {
+                statusDiv.textContent = `분석 시작 실패: ${response.msg || '알 수 없는 오류'}`;
+                return;
+            }
+
+            selectedVideo.textContent = `선택 영상: ${response.selected_path}`;
+            liveVideo.src = toFileUrl(response.selected_path);
+            liveVideo.currentTime = 0;
+            liveVideo.playbackRate = 1;
+            liveVideo.play().catch(() => {});
+
+            snapshotImage.removeAttribute('src');
+            analysisImage.removeAttribute('src');
+            recentEvents.innerHTML = '<div class="empty">이벤트 대기 중...</div>';
+            snapshotTimestamp.textContent = '첫 스냅샷을 기다리는 중입니다.';
+            latestResultMeta.textContent = '아직 분석 결과가 없습니다.';
+            resultPath.textContent = '감지 결과는 results/events 폴더에 저장됩니다.';
+
+            isProcessing = true;
+            analyzeBtn.disabled = true;
+            stopBtn.disabled = false;            
+            statusDiv.textContent = '원본 영상 재생과 함께 스냅샷 분석을 시작합니다.';
+            progressText.textContent = '분석 시작';
+            startPolling();
+        });
+
+        stopBtn.addEventListener('click', async () => {
+            stopBtn.disabled = true;
+            const response = await ipcRenderer.invoke('stop-video-analysis');
+            if (response.status === 'ok') {
+                statusDiv.textContent = '분석 중지 요청을 전달했습니다.';
+            } else {
+                statusDiv.textContent = `중지 요청 실패: ${response.msg || '알 수 없는 오류'}`;
+            }
+        });
+
+        intervalRange.addEventListener('input', updateIntervalLabel);
+
+        openEventFolderBtn.addEventListener('click', async () => {
+            const targetPath = resolveEventDirectory(latestState);
+            if (!targetPath) {
+                statusDiv.textContent = '열 수 있는 저장 폴더가 아직 없습니다.';
+                return;
+            }
+
+            const response = await ipcRenderer.invoke('open-path', targetPath);
+            if (response.status !== 'ok') {
+                statusDiv.textContent = `폴더 열기 실패: ${response.msg || '알 수 없는 오류'}`;
+            }
+        });
+
+        bindZoomableImage(snapshotImage, () => {
+            const label = snapshotTimestamp.textContent || '원본 스냅샷';
+            return `원본 스냅샷 / ${label}`;
+        });
+
+        bindZoomableImage(analysisImage, () => {
+            const label = snapshotTimestamp.textContent || '분석 결과';
+            return `분석 결과 / ${label}`;
+        });
+
+        closeModalBtn.addEventListener('click', closePreviewModal);
+        imageModal.addEventListener('click', (event) => {
+            if (event.target === imageModal) {
+                closePreviewModal();
+            }
+        });
+
+        window.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && imageModal.classList.contains('open')) {
+                closePreviewModal();
+            }
+        });
+
+        updateIntervalLabel();
+        checkModelStatus();
+        setInterval(checkModelStatus, 1000);
+    </script>
+</body>
+</html>

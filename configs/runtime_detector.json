@@ -1,0 +1,85 @@
+{
+  "profile_name": "snapshot-detection-v2",
+  "cpu": {
+    "model_path": "yolov8l.pt",
+    "target_width": 1536,
+    "confidence_threshold": 0.09,
+    "inference_imgsz": 1536,
+    "secondary_model_path": "rtdetr-l.pt",
+    "secondary_target_width": 1536,
+    "secondary_confidence_threshold": 0.08,
+    "secondary_inference_imgsz": 1536
+  },
+  "gpu": {
+    "model_path": "yolov8l.pt",
+    "target_width": 1792,
+    "confidence_threshold": 0.08,
+    "inference_imgsz": 1792,
+    "secondary_model_path": "rtdetr-l.pt",
+    "secondary_target_width": 1792,
+    "secondary_confidence_threshold": 0.07,
+    "secondary_inference_imgsz": 1792
+  },
+  "fast_sampling": {
+    "interval_threshold_seconds": 2,
+    "model_path": "yolov8m.pt",
+    "target_width": 1280,
+    "confidence_threshold": 0.1,
+    "inference_imgsz": 1280,
+    "disable_secondary": true
+  },  
+  "allowed_classes": [
+    "person",
+    "car",
+    "truck",
+    "bus",
+    "vehicle"
+  ],
+  "class_aliases": {
+    "person": "person",
+    "car": "vehicle",
+    "truck": "vehicle",
+    "bus": "vehicle",
+    "dump_truck": "vehicle",
+    "tanker_truck": "vehicle"
+  },
+  "class_min_scores": {
+    "person": 0.12,
+    "vehicle": 0.1
+  },
+  "filters": {
+    "person": {
+      "min_area_ratio": 0.000003,
+      "max_area_ratio": 0.05,
+      "min_aspect_ratio": 0.08,
+      "max_aspect_ratio": 1.6
+    },
+    "vehicle": {
+      "min_area_ratio": 0.00002,
+      "max_area_ratio": 0.3,
+      "min_aspect_ratio": 0.18,
+      "max_aspect_ratio": 7.2
+    }
+  },
+  "ensemble": {
+    "enabled": true,
+    "nms_iou_threshold": 0.42,
+    "prefer_secondary_for_vehicle": true
+  },
+  "preview_jpeg_quality": 88,
+  "preview_max_width": 1400,
+  "sampling": {
+    "default_interval_seconds": 3,
+    "min_interval_seconds": 1,
+    "max_interval_seconds": 10,
+    "snapshot_queue_size": 2,
+    "result_queue_size": 4
+  },
+  "event": {
+    "enabled": true,
+    "save_directory": "results/events",
+    "max_recent_events": 18
+  },
+  "fp16_on_cuda": true,
+  "cudnn_benchmark": true
+}
