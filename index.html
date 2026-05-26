@@ -2,699 +2,1529 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>드론 영상 샘플링 분석 관제</title>
+    <title>AeroSentinel · Drone Vision Operations Console</title>
     <style>
         :root {
-            --bg: #0c131a;
-            --panel: rgba(20, 28, 37, 0.92);
-            --panel-soft: rgba(255, 255, 255, 0.03);
-            --border: rgba(140, 170, 196, 0.16);
+            --bg-base: #050a10;
+            --bg-elev: #0c141d;
+            --bg-card: rgba(18, 26, 36, 0.92);
+            --bg-soft: rgba(255, 255, 255, 0.035);
+            --bg-softer: rgba(255, 255, 255, 0.06);
+            --border: rgba(132, 162, 188, 0.14);
+            --border-soft: rgba(132, 162, 188, 0.08);
+            --border-strong: rgba(132, 162, 188, 0.24);
             --text: #eef4fb;
-            --muted: #94aabc;
-            --accent: #57c7ff;
+            --text-2: #b8c8d8;
+            --muted: #788a9c;
+            --muted-2: #506072;
+
+            --accent: #4dd4ff;
+            --accent-2: #6ff0c9;
+            --primary: #29cf8f;
+            --primary-2: #7af0bc;
+            --danger: #ff556b;
+            --danger-2: #ff8696;
+            --warn: #ffb056;
+            --notice: #ffe188;
             --safe: #2ecf8d;
-            --warn: #ff8f5b;
-            --critical: #ff556b;
+
+            --shadow-card: 0 18px 48px rgba(0, 0, 0, 0.35);
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
+
+        html, body { height: 100%; }
 
         body {
             margin: 0;
-            min-height: 100vh;
-            font-family: "Malgun Gothic", sans-serif;
             color: var(--text);
+            font-family: "Inter", "Pretendard", "Malgun Gothic", -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 14px;
             background:
-                radial-gradient(circle at top right, rgba(87, 199, 255, 0.10), transparent 24%),
-                radial-gradient(circle at top left, rgba(46, 207, 141, 0.10), transparent 24%),
-                linear-gradient(180deg, #061017 0%, var(--bg) 60%);
+                radial-gradient(circle at 88% -10%, rgba(77, 212, 255, 0.10), transparent 26%),
+                radial-gradient(circle at 5% 0%, rgba(46, 207, 141, 0.08), transparent 28%),
+                linear-gradient(180deg, #03080d 0%, var(--bg-base) 60%);
+            overflow: hidden;
         }
 
-        .app {
-            max-width: 1540px;
-            margin: 0 auto;
-            padding: 28px 24px 40px;
+        /* ============ Shell ============ */
+        .shell {
+            display: grid;
+            grid-template-columns: 232px 1fr;
+            grid-template-rows: 64px 1fr;
+            height: 100vh;
         }
 
-        .panel,
-        .controls,
+        /* ============ Topbar ============ */
         .topbar {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
-        }
-
-        .topbar {
+            grid-column: 1 / -1;
             display: flex;
-            justify-content: space-between;
-            gap: 24px;
-            padding: 24px 26px;
-            margin-bottom: 18px;
-            align-items: flex-start;
+            align-items: center;
+            gap: 18px;
+            padding: 0 22px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(13, 21, 30, 0.95), rgba(8, 14, 21, 0.95));
+            backdrop-filter: blur(12px);
+            z-index: 10;
         }
 
-        .eyebrow {
-            margin-bottom: 10px;
-            font-size: 12px;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
-            color: var(--accent);
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 200px;
+            padding-right: 18px;
+            border-right: 1px solid var(--border-soft);
+            height: 100%;
         }
 
-        h1 {
-            margin: 0 0 8px;
-            font-size: 38px;
-            line-height: 1.08;
+        .brand-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #29cf8f, #4dd4ff);
+            display: grid;
+            place-items: center;
+            box-shadow: 0 6px 16px rgba(77, 212, 255, 0.28);
         }
 
-        .subtitle {
-            margin: 0;
-            max-width: 780px;
-            line-height: 1.7;
-            color: var(--muted);
+        .brand-name {
             font-size: 15px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
         }
 
-        .pills {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .pill {
-            padding: 10px 14px;
-            border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            background: rgba(255, 255, 255, 0.05);
+        .brand-sub {
+            font-size: 11px;
             color: var(--muted);
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+        }
+
+        .site-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            border-radius: 12px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border-soft);
+            min-width: 280px;
+        }
+
+        .site-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--safe);
+            box-shadow: 0 0 0 4px rgba(46, 207, 141, 0.18);
+            animation: pulse-soft 2.4s ease-in-out infinite;
+        }
+
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.55; }
+        }
+
+        .site-name {
             font-size: 13px;
+            font-weight: 600;
+        }
+
+        .site-meta {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .status-cluster {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .led-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border-soft);
+            font-size: 12px;
+            color: var(--text-2);
             white-space: nowrap;
         }
 
-        .pill.ready {
-            color: #b5ffdf;
-            border-color: rgba(46, 207, 141, 0.40);
-            background: rgba(46, 207, 141, 0.14);
+        .led {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--muted-2);
         }
 
-        .pill.error {
-            color: #ffd7db;
-            border-color: rgba(255, 85, 107, 0.42);
-            background: rgba(255, 85, 107, 0.14);
+        .led.on { background: var(--safe); box-shadow: 0 0 0 3px rgba(46, 207, 141, 0.18); }
+        .led.warn { background: var(--warn); box-shadow: 0 0 0 3px rgba(255, 176, 86, 0.18); }
+        .led.err { background: var(--danger); box-shadow: 0 0 0 3px rgba(255, 85, 107, 0.18); animation: pulse-soft 1.4s ease-in-out infinite; }
+
+        .led-pill.ready { color: #c7ffe6; border-color: rgba(46, 207, 141, 0.36); background: rgba(46, 207, 141, 0.10); }
+        .led-pill.error { color: #ffd7db; border-color: rgba(255, 85, 107, 0.40); background: rgba(255, 85, 107, 0.10); }
+
+        .risk-badge {
+            font-weight: 800;
+            letter-spacing: 0.06em;
         }
 
-        .risk-clear {
-            color: #b5ffdf;
-            border-color: rgba(46, 207, 141, 0.40);
-            background: rgba(46, 207, 141, 0.14);
+        .risk-clear { color: #b5ffdf; border-color: rgba(46, 207, 141, 0.38); background: rgba(46, 207, 141, 0.10); }
+        .risk-notice { color: #ffe9a8; border-color: rgba(255, 225, 136, 0.38); background: rgba(255, 225, 136, 0.10); }
+        .risk-warning { color: #ffd3bf; border-color: rgba(255, 176, 86, 0.40); background: rgba(255, 176, 86, 0.10); }
+        .risk-critical { color: #ffd1d7; border-color: rgba(255, 85, 107, 0.42); background: rgba(255, 85, 107, 0.12); animation: pulse-soft 1.2s ease-in-out infinite; }
+
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 12px 6px 6px;
+            border-radius: 999px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border-soft);
         }
 
-        .risk-notice {
-            color: #ffe3a2;
-            border-color: rgba(240, 182, 69, 0.42);
-            background: rgba(240, 182, 69, 0.14);
+        .avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4dd4ff, #29cf8f);
+            display: grid;
+            place-items: center;
+            font-size: 11px;
+            font-weight: 800;
+            color: #04110b;
         }
 
-        .risk-warning {
-            color: #ffd3bf;
-            border-color: rgba(255, 143, 91, 0.44);
-            background: rgba(255, 143, 91, 0.14);
+        .user-name { font-size: 12px; font-weight: 600; }
+        .user-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.04em; }
+
+        /* ============ Sidebar ============ */
+        .sidebar {
+            border-right: 1px solid var(--border);
+            padding: 18px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            background: rgba(8, 13, 19, 0.6);
+            overflow-y: auto;
         }
 
-        .risk-critical {
-            color: #ffd1d7;
-            border-color: rgba(255, 85, 107, 0.42);
-            background: rgba(255, 85, 107, 0.16);
+        .nav-group-label {
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            padding: 0 10px 6px;
         }
 
-        .controls {
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 10px 12px;
+            margin-bottom: 4px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-2);
+            font-size: 13px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-soft);
+            color: var(--text);
+        }
+
+        .nav-item.active {
+            background: rgba(77, 212, 255, 0.10);
+            border-color: rgba(77, 212, 255, 0.30);
+            color: #d6f3ff;
+        }
+
+        .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.85; }
+
+        .nav-item .nav-tag {
+            margin-left: auto;
+            font-size: 10px;
+            color: var(--muted);
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: var(--bg-softer);
+        }
+
+        .layer-card {
+            margin-top: auto;
+            padding: 12px;
+            border-radius: 14px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border-soft);
+        }
+
+        .layer-card-title {
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .layer-chips {
             display: flex;
             flex-wrap: wrap;
-            align-items: center;
+            gap: 6px;
+        }
+
+        .layer-chip {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--muted);
+            border: 1px solid var(--border-soft);
+        }
+
+        .layer-chip.on {
+            background: rgba(46, 207, 141, 0.14);
+            border-color: rgba(46, 207, 141, 0.30);
+            color: #b5ffdf;
+        }
+
+        .sidebar-foot {
+            font-size: 10px;
+            color: var(--muted-2);
+            text-align: center;
+            padding-top: 6px;
+            border-top: 1px solid var(--border-soft);
+            letter-spacing: 0.05em;
+        }
+
+        /* ============ Content ============ */
+        .content {
+            overflow-y: auto;
+            padding: 18px 22px 28px;
+            display: flex;
+            flex-direction: column;
             gap: 16px;
-            padding: 18px 20px;
-            margin-bottom: 18px;
+        }
+
+        .content::-webkit-scrollbar { width: 10px; }
+        .content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.10); border-radius: 999px; }
+
+        /* ============ Mission Bar ============ */
+        .mission-bar {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 18px;
+            align-items: center;
+            padding: 14px 18px;
+            border-radius: var(--radius-lg);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-card);
+        }
+
+        .mission-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .mission-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .mission-state {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--muted);
+            border: 1px solid var(--border-soft);
+        }
+
+        .mission-state.idle { color: var(--muted); }
+        .mission-state.active {
+            color: #c7ffe6;
+            background: rgba(46, 207, 141, 0.12);
+            border-color: rgba(46, 207, 141, 0.36);
+        }
+        .mission-state.active .led { background: var(--safe); animation: pulse-soft 1.6s ease-in-out infinite; }
+        .mission-state.stopped { color: #ffd7db; background: rgba(255, 85, 107, 0.10); border-color: rgba(255, 85, 107, 0.36); }
+        .mission-state.completed { color: #d6f3ff; background: rgba(77, 212, 255, 0.10); border-color: rgba(77, 212, 255, 0.36); }
+
+        .mission-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            color: var(--text-2);
+            font-size: 12px;
+        }
+
+        .mission-meta span b {
+            color: var(--text);
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        .mission-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .ctl-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+        }
+
+        .ctl-group label {
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .ctl-group input[type="range"] { width: 140px; accent-color: var(--accent); }
+
+        .ctl-group select {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            border: 1px solid var(--border-soft);
+            border-radius: 8px;
+            padding: 5px 8px;
+            font-size: 12px;
+            font-family: inherit;
+        }
+
+        .ctl-value { color: var(--accent); font-weight: 700; min-width: 32px; text-align: right; font-size: 13px; }
+
+        .mode-toggle {
+            display: inline-flex;
+            padding: 3px;
+            border-radius: 11px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border-soft);
+        }
+
+        .mode-opt {
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+        }
+
+        .mode-opt.active {
+            background: rgba(77, 212, 255, 0.14);
+            color: var(--accent);
+        }
+
+        .watch-row {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            border-radius: 12px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border-soft);
+            font-size: 12px;
+            color: var(--text-2);
+            flex-wrap: wrap;
+        }
+
+        .watch-row.show { display: flex; }
+
+        .watch-folder-path {
+            font-family: 'Consolas', 'Courier New', monospace;
+            color: var(--accent);
+            background: rgba(77, 212, 255, 0.06);
+            padding: 4px 10px;
+            border-radius: 6px;
+            word-break: break-all;
+            min-width: 200px;
+            flex: 1;
+            font-size: 11px;
+        }
+
+        .watch-folder-path.empty {
+            color: var(--muted);
+            background: var(--bg-softer);
+            font-style: italic;
+        }
+
+        .watch-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--muted-2);
+            flex-shrink: 0;
+        }
+
+        .watch-status-dot.on {
+            background: var(--safe);
+            box-shadow: 0 0 0 3px rgba(46, 207, 141, 0.18);
+            animation: pulse-soft 2s ease-in-out infinite;
+        }
+
+        .queue-badge {
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: var(--bg-softer);
+            border: 1px solid var(--border-soft);
+            font-size: 11px;
+            color: var(--text-2);
+            white-space: nowrap;
+        }
+
+        .queue-badge.has-items {
+            background: rgba(77, 212, 255, 0.10);
+            border-color: rgba(77, 212, 255, 0.30);
+            color: var(--accent);
+        }
+
+        .watch-last {
+            font-size: 11px;
+            color: var(--muted);
+            margin-left: auto;
+            max-width: 240px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         button {
             border: none;
-            border-radius: 14px;
             cursor: pointer;
+            font-family: inherit;
             font-weight: 700;
-            transition: transform 0.16s ease, opacity 0.16s ease, background 0.16s ease;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-1px);
-        }
-
-        button:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
-        }
-
-        #analyzeBtn {
-            padding: 14px 24px;
-            font-size: 15px;
-            color: #04110b;
-            background: linear-gradient(135deg, #29cf8f, #7af0bc);
-        }
-
-        #stopBtn {
-            padding: 14px 22px;
-            font-size: 15px;
-            color: white;
-            background: linear-gradient(135deg, #95414a, #ff6176);
-        }
-
-        .ghost-btn {
-            padding: 10px 14px;
-            color: var(--text);
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.10);
-        }
-
-        .interval-box {
-            display: flex;
+            transition: transform 0.16s ease, opacity 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+            display: inline-flex;
             align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            border-radius: 16px;
-            background: var(--panel-soft);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            gap: 8px;
         }
 
-        .interval-box label {
-            color: var(--muted);
+        button:hover:not(:disabled) { transform: translateY(-1px); }
+        button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .btn-primary {
+            padding: 11px 18px;
+            border-radius: 11px;
+            color: #04110b;
             font-size: 13px;
+            background: linear-gradient(135deg, #29cf8f, #7af0bc);
+            box-shadow: 0 8px 18px rgba(41, 207, 143, 0.22);
         }
 
-        .interval-box input[type="range"] {
-            width: 160px;
+        .btn-danger {
+            padding: 11px 18px;
+            border-radius: 11px;
+            color: white;
+            font-size: 13px;
+            background: linear-gradient(135deg, #a73642, #ff556b);
+            box-shadow: 0 8px 18px rgba(255, 85, 107, 0.18);
         }
 
-        .selection {
-            flex: 1 1 280px;
-            color: var(--muted);
-            line-height: 1.55;
-            word-break: break-all;
+        .btn-ghost {
+            padding: 9px 14px;
+            border-radius: 10px;
+            background: var(--bg-softer);
+            border: 1px solid var(--border-soft);
+            color: var(--text);
+            font-size: 12px;
         }
 
-        .main-grid {
+        .btn-ghost:hover:not(:disabled) {
+            background: rgba(77, 212, 255, 0.10);
+            border-color: rgba(77, 212, 255, 0.30);
+        }
+
+        /* ============ KPI Strip ============ */
+        .kpi-strip {
             display: grid;
-            grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.9fr);
-            gap: 18px;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 12px;
         }
 
-        .panel {
-            padding: 18px;
+        .kpi-card {
+            padding: 14px 16px;
+            border-radius: var(--radius-lg);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-card);
+            position: relative;
+            overflow: hidden;
         }
 
-        .section-head {
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(77, 212, 255, 0.06), transparent 50%);
+            pointer-events: none;
+        }
+
+        .kpi-card.accent::before { background: linear-gradient(135deg, rgba(46, 207, 141, 0.10), transparent 50%); }
+        .kpi-card.warn::before { background: linear-gradient(135deg, rgba(255, 176, 86, 0.10), transparent 50%); }
+        .kpi-card.danger::before { background: linear-gradient(135deg, rgba(255, 85, 107, 0.10), transparent 50%); }
+
+        .kpi-label {
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            position: relative;
+        }
+
+        .kpi-value {
+            font-size: 26px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            position: relative;
+        }
+
+        .kpi-value.small { font-size: 20px; }
+
+        .kpi-foot {
+            margin-top: 6px;
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 0.06em;
+            position: relative;
+        }
+
+        /* ============ Ops Grid ============ */
+        .ops-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.55fr) minmax(360px, 0.85fr);
+            gap: 16px;
+        }
+
+        .card {
+            padding: 16px;
+            border-radius: var(--radius-lg);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-card);
+        }
+
+        .card-head {
             display: flex;
+            align-items: flex-start;
             justify-content: space-between;
             gap: 12px;
-            align-items: center;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
 
-        .section-actions {
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
-        .section-title {
-            font-size: 18px;
-            font-weight: 700;
-        }
-
-        .section-note {
+        .card-sub {
+            font-size: 12px;
             color: var(--muted);
-            font-size: 13px;
+            margin-top: 4px;
         }
 
-        .viewer {
-            width: 100%;
-            border-radius: 18px;
+        .card-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            color: var(--text-2);
+            background: var(--bg-soft);
+            border: 1px solid var(--border-soft);
+            white-space: nowrap;
+        }
+
+        /* ============ Viewer ============ */
+        .viewer-card { display: flex; flex-direction: column; gap: 12px; }
+
+        .viewer-stage {
+            position: relative;
+            border-radius: var(--radius-md);
             overflow: hidden;
-            background: #04090d;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        #liveVideo,
-        .snapshot-image {
-            display: block;
-            width: 100%;
-            background: #04090d;
+            background: #02060a;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            min-height: 440px;
         }
 
         #liveVideo {
-            min-height: 420px;
-            object-fit: contain;
-        }
-
-        .snapshot-image {
-            min-height: 220px;
-            object-fit: contain;
-        }
-
-        .status-banner {
-            margin-top: 14px;
-            padding: 14px 16px;
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.04);
-            color: var(--text);
-            line-height: 1.6;
-        }
-
-        .metric-grid {
-            margin-top: 16px;
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 12px;
-        }
-
-        .metric {
-            padding: 14px;
-            border-radius: 18px;
-            background: var(--panel-soft);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .metric-label {
             display: block;
-            margin-bottom: 8px;
-            font-size: 12px;
-            color: var(--muted);
+            width: 100%;
+            max-height: 540px;
+            object-fit: contain;
+            background: #02060a;
         }
 
-        .metric-value {
-            font-size: 26px;
-            font-weight: 700;
+        .viewer-hud {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 14px;
+            pointer-events: none;
         }
 
-        .metric-value.small {
-            font-size: 20px;
-        }
-
-        .progress-wrap {
-            margin-top: 16px;
-        }
-
-        .progress-header {
+        .hud-row {
             display: flex;
             justify-content: space-between;
+            align-items: flex-end;
             gap: 12px;
-            margin-bottom: 8px;
+        }
+
+        .hud-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(8, 12, 17, 0.62);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-2);
+            letter-spacing: 0.05em;
+        }
+
+        .rec-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            box-shadow: 0 0 0 4px rgba(255, 85, 107, 0.20);
+            animation: pulse-soft 1.4s ease-in-out infinite;
+        }
+
+        .rec-dot.idle { background: var(--muted-2); box-shadow: none; animation: none; }
+
+        .hud-corner-tl, .hud-corner-tr, .hud-corner-bl, .hud-corner-br {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-color: rgba(77, 212, 255, 0.55);
+            border-style: solid;
+        }
+        .hud-corner-tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+        .hud-corner-tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+        .hud-corner-bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
+        .hud-corner-br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+
+        .hud-risk-banner {
+            align-self: flex-start;
+            padding: 7px 14px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            background: rgba(46, 207, 141, 0.16);
+            color: #c7ffe6;
+            border: 1px solid rgba(46, 207, 141, 0.38);
+            backdrop-filter: blur(8px);
+        }
+
+        .hud-risk-banner.risk-notice { background: rgba(255, 225, 136, 0.16); color: #ffe9a8; border-color: rgba(255, 225, 136, 0.40); }
+        .hud-risk-banner.risk-warning { background: rgba(255, 176, 86, 0.16); color: #ffd3bf; border-color: rgba(255, 176, 86, 0.42); }
+        .hud-risk-banner.risk-critical { background: rgba(255, 85, 107, 0.16); color: #ffd1d7; border-color: rgba(255, 85, 107, 0.42); }
+
+        .progress-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .progress-row .progress-label {
+            font-size: 12px;
             color: var(--muted);
-            font-size: 13px;
+            min-width: 90px;
         }
 
         .progress-bar {
-            width: 100%;
-            height: 12px;
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.06);
             border-radius: 999px;
             overflow: hidden;
-            background: rgba(255, 255, 255, 0.08);
         }
 
         .progress-fill {
-            width: 0%;
             height: 100%;
-            background: linear-gradient(90deg, #29cf8f, #6fe4ff);
-            transition: width 0.15s linear;
+            width: 0%;
+            background: linear-gradient(90deg, #29cf8f, #4dd4ff);
+            transition: width 0.18s linear;
         }
 
-        .right-stack {
-            display: grid;
-            gap: 18px;
+        .progress-percent {
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            min-width: 44px;
+            text-align: right;
+            color: var(--accent);
         }
 
-        .snapshot-grid {
-            display: grid;
-            gap: 12px;
-        }
-
-        .snapshot-card {
-            padding: 12px;
-            border-radius: 18px;
-            background: var(--panel-soft);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .snapshot-title {
-            margin-bottom: 10px;
-            color: var(--muted);
+        .status-line {
+            color: var(--text-2);
             font-size: 13px;
+            line-height: 1.55;
+            padding: 10px 12px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border-soft);
+            border-radius: 10px;
         }
+
+        .status-line .accent { color: var(--accent); font-weight: 700; }
+
+        /* ============ Alert Feed ============ */
+        .alert-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .alert-list::-webkit-scrollbar { width: 6px; }
+        .alert-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 999px; }
+
+        .alert-item {
+            display: grid;
+            grid-template-columns: 4px 1fr auto;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border-soft);
+        }
+
+        .alert-item .alert-bar {
+            border-radius: 999px;
+            background: var(--safe);
+        }
+
+        .alert-item.notice .alert-bar { background: var(--notice); }
+        .alert-item.warning .alert-bar { background: var(--warn); }
+        .alert-item.critical .alert-bar { background: var(--danger); }
+
+        .alert-body { min-width: 0; }
+        .alert-title { font-size: 13px; font-weight: 700; }
+        .alert-detail { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+        .alert-time {
+            font-size: 11px;
+            color: var(--muted);
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ============ Right Rail ============ */
+        .rail {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .tab-group {
+            display: inline-flex;
+            background: var(--bg-soft);
+            padding: 3px;
+            border-radius: 10px;
+            border: 1px solid var(--border-soft);
+        }
+
+        .tab {
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            background: transparent;
+            border-radius: 8px;
+            border: none;
+        }
+
+        .tab.active {
+            background: rgba(77, 212, 255, 0.14);
+            color: var(--accent);
+        }
+
+        .image-pair {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: 1fr;
+        }
+
+        .image-pair.split { grid-template-columns: 1fr 1fr; }
+
+        .image-cell {
+            position: relative;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: #02060a;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            cursor: zoom-in;
+        }
+
+        .image-cell img {
+            display: block;
+            width: 100%;
+            min-height: 180px;
+            object-fit: contain;
+            background: #02060a;
+        }
+
+        .image-cell.hidden { display: none; }
+
+        .image-tag {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.10em;
+            background: rgba(8, 12, 17, 0.72);
+            color: var(--accent);
+            border: 1px solid rgba(77, 212, 255, 0.30);
+            backdrop-filter: blur(6px);
+        }
+
+        .image-tag.analysis { color: #b5ffdf; border-color: rgba(46, 207, 141, 0.32); }
 
         .object-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
+            max-height: 160px;
+            overflow-y: auto;
         }
 
         .object-chip {
-            padding: 8px 10px;
+            padding: 6px 10px;
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--bg-softer);
+            border: 1px solid var(--border-soft);
+            font-size: 11px;
+            color: var(--text-2);
+        }
+
+        .object-chip.person { background: rgba(77, 212, 255, 0.12); border-color: rgba(77, 212, 255, 0.28); color: #d6f3ff; }
+        .object-chip.vehicle { background: rgba(255, 176, 86, 0.12); border-color: rgba(255, 176, 86, 0.30); color: #ffd3bf; }
+
+        .result-meta {
+            margin-top: 10px;
             font-size: 12px;
-        }
-
-        .zoomable {
-            cursor: zoom-in;
-        }
-
-        .event-strip {
-            margin-top: 18px;
-        }
-
-        .event-scroll {
-            max-height: 560px;
-            overflow-y: auto;
-            padding-right: 6px;
-        }
-
-        .event-scroll::-webkit-scrollbar {
-            width: 10px;
-        }
-
-        .event-scroll::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.12);
-            border-radius: 999px;
-        }
-
-        .event-list {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
-        }
-
-        .event-item {
-            padding: 12px;
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .event-item img {
-            width: 100%;
-            display: block;
-            border-radius: 12px;
-            margin-bottom: 10px;
-        }
-
-        .event-title {
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-
-        .event-body,
-        .meta-text {
             color: var(--muted);
-            line-height: 1.55;
-            font-size: 13px;
+            line-height: 1.6;
             word-break: break-all;
         }
 
-        .empty {
+        .result-meta .accent { color: var(--accent); font-weight: 700; }
+
+        /* ============ Layer Bars ============ */
+        .layer-bars { display: flex; flex-direction: column; gap: 9px; }
+
+        .layer-row {
+            display: grid;
+            grid-template-columns: 70px 1fr 60px;
+            gap: 10px;
+            align-items: center;
+            font-size: 11px;
             color: var(--muted);
-            padding: 12px 0 4px;
         }
 
-        .accent {
-            color: var(--accent);
+        .layer-row span:first-child {
             font-weight: 700;
+            letter-spacing: 0.08em;
+            color: var(--text-2);
         }
 
-        .image-modal {
+        .layer-track {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .layer-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #29cf8f, #4dd4ff);
+            transition: width 0.2s ease;
+            border-radius: 999px;
+        }
+
+        .layer-fill.vlm { background: linear-gradient(90deg, #ffb056, #ff8696); }
+        .layer-fill.track { background: linear-gradient(90deg, #6ff0c9, #4dd4ff); }
+
+        .layer-row > span:last-child {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        /* ============ Events ============ */
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+            max-height: 460px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .events-grid::-webkit-scrollbar { width: 8px; }
+        .events-grid::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.10); border-radius: 999px; }
+
+        .event-card {
+            border-radius: var(--radius-md);
+            background: var(--bg-soft);
+            border: 1px solid var(--border-soft);
+            overflow: hidden;
+            transition: transform 0.16s ease, border-color 0.16s ease;
+        }
+
+        .event-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(77, 212, 255, 0.28);
+        }
+
+        .event-card img {
+            display: block;
+            width: 100%;
+            height: 130px;
+            object-fit: cover;
+            cursor: zoom-in;
+        }
+
+        .event-card-body { padding: 10px 12px 12px; }
+
+        .event-card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .event-risk {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.10em;
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+
+        .event-frame { font-size: 11px; color: var(--muted); }
+        .event-info { font-size: 11px; color: var(--muted); line-height: 1.55; word-break: break-all; }
+        .event-info b { color: var(--text-2); font-weight: 600; }
+
+        .empty {
+            grid-column: 1 / -1;
+            color: var(--muted);
+            font-size: 13px;
+            text-align: center;
+            padding: 28px 0;
+        }
+
+        /* ============ Modal ============ */
+        .modal {
             position: fixed;
             inset: 0;
             display: none;
             align-items: center;
             justify-content: center;
-            padding: 24px;
-            background: rgba(2, 8, 14, 0.86);
-            z-index: 1000;
+            padding: 28px;
+            background: rgba(2, 6, 10, 0.88);
+            z-index: 100;
+            backdrop-filter: blur(6px);
         }
 
-        .image-modal.open {
-            display: flex;
-        }
+        .modal.open { display: flex; }
 
-        .image-modal-card {
-            width: min(1180px, 100%);
-            max-height: calc(100vh - 48px);
+        .modal-card {
+            width: min(1200px, 100%);
+            max-height: calc(100vh - 56px);
             padding: 18px;
-            border-radius: 24px;
+            border-radius: 22px;
             background: #08111a;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 28px 70px rgba(0, 0, 0, 0.36);
+            border: 1px solid var(--border-strong);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
         }
 
-        .modal-topbar {
+        .modal-head {
             display: flex;
             justify-content: space-between;
-            gap: 12px;
             align-items: center;
             margin-bottom: 14px;
         }
 
+        .modal-title { font-size: 15px; font-weight: 700; }
+
         .modal-image {
             display: block;
             width: 100%;
-            max-height: calc(100vh - 180px);
+            max-height: calc(100vh - 200px);
             object-fit: contain;
-            border-radius: 18px;
+            border-radius: 14px;
             background: #02060a;
         }
 
         .modal-caption {
             margin-top: 12px;
             color: var(--muted);
-            line-height: 1.6;
-            font-size: 14px;
+            font-size: 12px;
             word-break: break-all;
         }
 
-        @media (max-width: 1180px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
+        /* ============ Toasts ============ */
+        .toast-stack {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 200;
+            max-width: 360px;
+            pointer-events: none;
         }
 
-        @media (max-width: 760px) {
-            .app {
-                padding: 18px 14px 28px;
-            }
+        .toast {
+            display: grid;
+            grid-template-columns: 4px 1fr;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(10, 16, 23, 0.92);
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.40);
+            animation: toast-in 0.24s cubic-bezier(0.2, 0.8, 0.3, 1.2);
+            backdrop-filter: blur(8px);
+            pointer-events: auto;
+        }
 
-            h1 {
-                font-size: 30px;
-            }
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
 
-            .topbar {
-                flex-direction: column;
-            }
+        .toast .toast-bar { border-radius: 999px; background: var(--accent); }
+        .toast.notice .toast-bar { background: var(--notice); }
+        .toast.warning .toast-bar { background: var(--warn); }
+        .toast.critical .toast-bar { background: var(--danger); }
 
-            .pills {
-                justify-content: flex-start;
-            }
+        .toast-title { font-size: 13px; font-weight: 700; }
+        .toast-body { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
 
-            .metric-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
+        /* ============ Responsive ============ */
+        @media (max-width: 1280px) {
+            .kpi-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+            .ops-grid { grid-template-columns: 1fr; }
+        }
 
-            .event-list {
-                grid-template-columns: 1fr;
-            }
+        @media (max-width: 980px) {
+            .shell { grid-template-columns: 1fr; grid-template-rows: 64px auto 1fr; }
+            .sidebar { display: none; }
+            .status-cluster { display: none; }
+            .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
     </style>
 </head>
 <body>
-    <div class="app">
-        <section class="topbar">
+    <div class="shell">
+        <!-- ============ TOP BAR ============ -->
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-logo">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#04110b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z"/>
+                        <path d="M12 12l8-5"/>
+                        <path d="M12 12L4 7"/>
+                        <path d="M12 12v10"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="brand-name">AeroSentinel</div>
+                    <div class="brand-sub">Vision Ops Console</div>
+                </div>
+            </div>
+
+            <div class="site-selector">
+                <div class="site-dot"></div>
+                <div>
+                    <div class="site-name">Site Alpha · Sector 03</div>
+                    <div class="site-meta">Drone Link · Local GPU · KST</div>
+                </div>
+            </div>
+
+            <div class="status-cluster">
+                <div id="engineStatus" class="led-pill"><span class="led"></span>Engine</div>
+                <div id="deviceBadge" class="led-pill">Device · —</div>
+                <div id="profileBadge" class="led-pill">Profile · —</div>
+                <div id="layersBadge" class="led-pill">Layers · —</div>
+                <div id="alBadge" class="led-pill">AL · 0</div>
+                <div id="riskBadge" class="led-pill risk-badge risk-clear">CLEAR</div>
+            </div>
+
+            <div class="user-chip">
+                <div class="avatar">OP</div>
+                <div>
+                    <div class="user-name">Operator</div>
+                    <div class="user-sub">Local session</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ============ SIDEBAR ============ -->
+        <aside class="sidebar">
             <div>
-                <div class="eyebrow">Sampling Based Drone Analysis</div>
-                <h1>드론 영상 샘플링 분석 관제</h1>
-                <p class="subtitle">
-                    좌측은 원본 영상을 1배속으로 계속 재생하고, 우측은 지정한 간격마다 캡처한 스냅샷만 고정밀 분석합니다.
-                    사람과 차량 이벤트는 별도 저장되어 실무 관제 화면처럼 빠르게 확인할 수 있습니다.
-                </p>
+                <div class="nav-group-label">Operations</div>
+                <button class="nav-item active" data-scroll-to="liveSection">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/></svg>
+                    라이브 분석
+                </button>
+                <button class="nav-item" data-scroll-to="feedSection">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11v3l4 1 2 4h2l2-4 4-1v-3"/><path d="M4 11l8-5 8 5"/></svg>
+                    감지 피드
+                    <span class="nav-tag" id="navFeedCount">0</span>
+                </button>
+                <button class="nav-item" data-scroll-to="eventsSection">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M3 10h18"/></svg>
+                    이벤트 아카이브
+                    <span class="nav-tag" id="navEventsCount">0</span>
+                </button>
             </div>
-            <div class="pills">
-                <div id="engineStatus" class="pill">엔진 준비 중...</div>
-                <div id="deviceBadge" class="pill">device -</div>
-                <div id="profileBadge" class="pill">profile -</div>
-                <div id="layersBadge" class="pill" title="5-Layer Safety Stack 활성 상태">layers -</div>
-                <div id="alBadge" class="pill" title="Active Learning 큐에 저장된 ROI 개수">AL 0</div>
-                <div id="riskBadge" class="pill risk-clear">CLEAR</div>
+
+            <div class="layer-card">
+                <div class="layer-card-title">5-Layer Safety Stack</div>
+                <div class="layer-chips" id="layerStackChips">
+                    <span class="layer-chip">L1 · Detector</span>
+                    <span class="layer-chip">L2 · SAHI</span>
+                    <span class="layer-chip">L3 · VLM</span>
+                    <span class="layer-chip">L4 · Tracker</span>
+                    <span class="layer-chip">L5 · AL</span>
+                </div>
             </div>
-        </section>
 
-        <section class="controls">
-            <button id="analyzeBtn" disabled>드론 영상 선택 후 분석 시작</button>
-            <button id="stopBtn" disabled>현재 분석 중지</button>
-            <div class="interval-box">
-                <label for="intervalRange">분석 간격</label>
-                <input id="intervalRange" type="range" min="1" max="10" value="3" />
-                <span id="intervalValue" class="accent">3초</span>
-            </div>          
-            <div id="selectedVideo" class="selection">선택된 영상이 없습니다.</div>
-        </section>
+            <div class="sidebar-foot">v0.9.0 · Local Build</div>
+        </aside>
 
-        <div class="main-grid">
-            <section class="panel">
-                <div class="section-head">
-                    <div>
-                        <div class="section-title">실시간 원본 영상</div>
-                        <div id="status" class="section-note">Python 엔진과 모델을 준비하고 있습니다.</div>
+        <!-- ============ CONTENT ============ -->
+        <main class="content">
+            <!-- Mission Bar -->
+            <section id="liveSection" class="mission-bar" style="grid-template-columns: 1fr; gap: 0;">
+                <div style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center;">
+                    <div class="mission-info">
+                        <div class="mission-row">
+                            <div id="missionState" class="mission-state idle"><span class="led"></span>대기 중</div>
+                            <div id="streamInfo" class="tag">stream idle</div>
+                            <div id="runModeTag" class="tag">수동 모드</div>
+                        </div>
+                        <div class="mission-meta">
+                            <span>선택 영상<b id="selectedVideo">없음</b></span>
+                            <span>샘플링<b id="samplingMeta">3초</b></span>
+                            <span>프로필<b id="profileMeta">balanced</b></span>
+                        </div>
                     </div>
-                    <div id="streamInfo" class="pill">stream idle</div>
-                </div>
-
-                <div class="viewer">
-                    <video id="liveVideo" muted playsinline preload="auto"></video>
-                </div>
-
-                <div id="riskSummary" class="status-banner">현재 감지된 사람이나 차량이 없습니다.</div>
-
-                <div class="metric-grid">
-                    <div class="metric">
-                        <span class="metric-label">현재 사람</span>
-                        <div id="currentPersons" class="metric-value">0</div>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">현재 차량</span>
-                        <div id="currentVehicles" class="metric-value">0</div>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">원본 FPS</span>
-                        <div id="streamFps" class="metric-value small">0.0</div>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">추론 FPS</span>
-                        <div id="inferenceFps" class="metric-value small">0.0</div>
-                    </div>
-                </div>
-
-                <div class="metric-grid">
-                    <div class="metric">
-                        <span class="metric-label">스냅샷 횟수</span>
-                        <div id="snapshotCount" class="metric-value small">0</div>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">분석 완료 횟수</span>
-                        <div id="analysisCount" class="metric-value small">0</div>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">분석 프레임</span>
-                        <div id="frameCounter" class="metric-value small">0 / 0</div>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">영상 시간</span>
-                        <div id="videoTime" class="metric-value small">0.0s</div>
+                    <div class="mission-controls">
+                        <div class="mode-toggle" id="modeToggle" title="자동: 폴더 감시 / 수동: 직접 선택">
+                            <button class="mode-opt active" data-mode="manual">수동</button>
+                            <button class="mode-opt" data-mode="auto">자동</button>
+                        </div>
+                        <div class="ctl-group">
+                            <label for="intervalRange">분석 간격</label>
+                            <input type="range" id="intervalRange" min="1" max="10" value="3" />
+                            <span class="ctl-value" id="intervalValue">3s</span>
+                        </div>
+                        <div class="ctl-group">
+                            <label for="profileSelect">프로필</label>
+                            <select id="profileSelect">
+                                <option value="fast">fast</option>
+                                <option value="balanced" selected>balanced</option>
+                                <option value="accurate">accurate</option>
+                            </select>
+                        </div>
+                        <button id="analyzeBtn" class="btn-primary" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            드론 영상 선택 후 분석 시작
+                        </button>
+                        <button id="stopBtn" class="btn-danger" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                            분석 중지
+                        </button>
                     </div>
                 </div>
-
-                <div class="progress-wrap">
-                    <div class="progress-header">
-                        <span id="progressText">대기 중</span>
-                        <span id="progressPercent">0%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div id="progressFill" class="progress-fill"></div>
-                    </div>
+                <div class="watch-row" id="watchRow">
+                    <span class="watch-status-dot" id="watchStatusDot"></span>
+                    <span style="font-weight: 600;">감시 폴더</span>
+                    <span class="watch-folder-path empty" id="watchFolderPath">선택되지 않음</span>
+                    <button id="selectFolderBtn" class="btn-ghost">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        찾아보기
+                    </button>
+                    <span class="queue-badge" id="queueBadge">대기열 0</span>
+                    <span class="watch-last" id="lastDetected">최근 감지: —</span>
                 </div>
-
-                <div id="resultPath" class="meta-text">감지 결과는 results/events 폴더에 저장됩니다.</div>
             </section>
 
-            <aside class="right-stack">
-                <section class="panel">
-                    <div class="section-head">
-                        <div>
-                            <div class="section-title">캡처 스냅샷</div>
-                            <div id="snapshotTimestamp" class="section-note">아직 캡처된 스냅샷이 없습니다.</div>
-                        </div>
-                        <div id="eventCountBadge" class="pill">이벤트 0건</div>
-                    </div>
+            <!-- KPI Strip -->
+            <section class="kpi-strip">
+                <div class="kpi-card accent">
+                    <div class="kpi-label">현재 사람</div>
+                    <div class="kpi-value" id="currentPersons">0</div>
+                    <div class="kpi-foot">PERSON · live</div>
+                </div>
+                <div class="kpi-card warn">
+                    <div class="kpi-label">현재 차량</div>
+                    <div class="kpi-value" id="currentVehicles">0</div>
+                    <div class="kpi-foot">VEHICLE · live</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">이벤트</div>
+                    <div class="kpi-value" id="eventCount">0</div>
+                    <div class="kpi-foot">SAVED</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">스냅샷</div>
+                    <div class="kpi-value small" id="snapshotCount">0</div>
+                    <div class="kpi-foot">SAMPLES</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">분석 완료</div>
+                    <div class="kpi-value small" id="analysisCount">0</div>
+                    <div class="kpi-foot">ANALYZED</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">원본 FPS</div>
+                    <div class="kpi-value small" id="streamFps">0.0</div>
+                    <div class="kpi-foot">STREAM</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">추론 FPS</div>
+                    <div class="kpi-value small" id="inferenceFps">0.0</div>
+                    <div class="kpi-foot">INFERENCE</div>
+                </div>
+            </section>
 
-                    <div class="snapshot-grid">
-                        <div class="snapshot-card">
-                            <div class="snapshot-title">원본 스냅샷</div>
-                            <div class="viewer">
-                                <img id="snapshotImage" class="snapshot-image zoomable" alt="원본 스냅샷" />
+            <!-- Ops Grid -->
+            <section class="ops-grid">
+                <!-- Left column -->
+                <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+                    <div class="card viewer-card">
+                        <div class="card-head">
+                            <div>
+                                <div class="card-title">
+                                    <span id="recDot" class="rec-dot idle"></span>
+                                    실시간 드론 영상
+                                </div>
+                                <div class="card-sub" id="statusLine">Python 엔진과 모델을 준비하고 있습니다.</div>
+                            </div>
+                            <div class="card-tags">
+                                <span class="tag" id="latencyTag">latency · — ms</span>
+                                <span class="tag" id="frameTag">frame · 0 / 0</span>
                             </div>
                         </div>
-                        <div class="snapshot-card">
-                            <div class="snapshot-title">분석 결과</div>
-                            <div class="viewer">
-                                <img id="analysisImage" class="snapshot-image zoomable" alt="분석 결과" />
+                        <div class="viewer-stage">
+                            <video id="liveVideo" muted playsinline preload="auto"></video>
+                            <div class="hud-corner-tl"></div>
+                            <div class="hud-corner-tr"></div>
+                            <div class="hud-corner-bl"></div>
+                            <div class="hud-corner-br"></div>
+                            <div class="viewer-hud">
+                                <div class="hud-row">
+                                    <div id="hudRisk" class="hud-risk-banner risk-clear">CLEAR</div>
+                                    <div class="hud-pill" id="hudTime">⏱ 0.0s</div>
+                                </div>
+                                <div class="hud-row">
+                                    <div class="hud-pill" id="hudCounts">👤 0 · 🚗 0</div>
+                                    <div class="hud-pill" id="hudFps">⚡ 0.0 fps</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="progress-row">
+                            <div class="progress-label" id="progressText">대기 중</div>
+                            <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+                            <div class="progress-percent" id="progressPercent">0%</div>
+                        </div>
+                        <div class="status-line" id="riskSummary">현재 감지된 사람이나 차량이 없습니다.</div>
+                    </div>
+
+                    <!-- Alert Feed -->
+                    <div id="feedSection" class="card">
+                        <div class="card-head">
+                            <div>
+                                <div class="card-title">실시간 감지 피드</div>
+                                <div class="card-sub">최근 분석 결과가 우선순위 순으로 표시됩니다.</div>
+                            </div>
+                            <span id="alertCount" class="tag">0 alerts</span>
+                        </div>
+                        <div id="alertList" class="alert-list">
+                            <div class="empty">아직 감지된 객체가 없습니다.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right rail -->
+                <aside class="rail">
+                    <div class="card">
+                        <div class="card-head">
+                            <div>
+                                <div class="card-title">캡처 스냅샷</div>
+                                <div class="card-sub" id="snapshotTimestamp">아직 캡처된 스냅샷이 없습니다.</div>
+                            </div>
+                            <div class="tab-group" id="snapshotTabs">
+                                <button class="tab active" data-view="raw">원본</button>
+                                <button class="tab" data-view="annotated">분석</button>
+                                <button class="tab" data-view="split">분할</button>
+                            </div>
+                        </div>
+                        <div id="imagePair" class="image-pair">
+                            <div class="image-cell" data-cell="raw">
+                                <img id="snapshotImage" alt="원본 스냅샷" />
+                                <div class="image-tag">RAW</div>
+                            </div>
+                            <div class="image-cell hidden" data-cell="annotated">
+                                <img id="analysisImage" alt="분석 결과" />
+                                <div class="image-tag analysis">ANNOTATED</div>
                             </div>
                         </div>
                     </div>
-                </section>
 
-                <section class="panel">
-                    <div class="section-head">
-                        <div class="section-title">감지 객체</div>
-                        <div id="riskLevelText" class="pill risk-clear">clear</div>
+                    <div class="card">
+                        <div class="card-head">
+                            <div>
+                                <div class="card-title">감지 객체</div>
+                                <div class="card-sub" id="riskLevelText">clear · 안전한 상태</div>
+                            </div>
+                        </div>
+                        <div id="objectList" class="object-list">
+                            <div class="object-chip">감지된 객체 없음</div>
+                        </div>
+                        <div id="latestResultMeta" class="result-meta">분석 결과가 여기에 표시됩니다.</div>
                     </div>
-                    <div id="objectList" class="object-list">
-                        <div class="object-chip">감지된 객체 없음</div>
-                    </div>
-                    <div id="latestResultMeta" class="meta-text" style="margin-top: 14px;">
-                        분석 결과가 여기에 표시됩니다.
-                    </div>
-                </section>
-            </aside>
-        </div>
 
-        <section class="panel event-strip">
-            <div class="section-head">
-                <div>
-                    <div class="section-title">최근 이벤트 이미지</div>
-                    <div class="section-note">사람 또는 차량이 감지되면 저장된 이미지가 아래에 쌓입니다.</div>
+                    <div class="card">
+                        <div class="card-head">
+                            <div>
+                                <div class="card-title">5-Layer 처리 시간</div>
+                                <div class="card-sub">최신 분석 프레임 기준</div>
+                            </div>
+                        </div>
+                        <div class="layer-bars">
+                            <div class="layer-row"><span>L1+L2</span><div class="layer-track"><div id="layerL1L2Fill" class="layer-fill"></div></div><span id="layerL1L2Val">—</span></div>
+                            <div class="layer-row"><span>L3 VLM</span><div class="layer-track"><div id="layerVlmFill" class="layer-fill vlm"></div></div><span id="layerVlmVal">—</span></div>
+                            <div class="layer-row"><span>L4 Track</span><div class="layer-track"><div id="layerTrackFill" class="layer-fill track"></div></div><span id="layerTrackVal">—</span></div>
+                        </div>
+                    </div>
+                </aside>
+            </section>
+
+            <!-- Events archive -->
+            <section id="eventsSection" class="card">
+                <div class="card-head">
+                    <div>
+                        <div class="card-title">이벤트 아카이브</div>
+                        <div class="card-sub" id="resultPath">감지 결과는 results/events 폴더에 저장됩니다.</div>
+                    </div>
+                    <div class="card-tags">
+                        <button id="openEventFolderBtn" class="btn-ghost" disabled>저장 폴더 열기</button>
+                    </div>
                 </div>
-                <div class="section-actions">
-                    <button id="openEventFolderBtn" class="ghost-btn" type="button">저장 폴더 열기</button>
-                </div>
-            </div>
-            <div class="event-scroll">
-                <div id="recentEvents" class="event-list">
+                <div id="recentEvents" class="events-grid">
                     <div class="empty">아직 저장된 이벤트가 없습니다.</div>
                 </div>
-            </div>
-        </section>
+            </section>
+        </main>
     </div>
 
-    <div id="imageModal" class="image-modal">
-        <div class="image-modal-card">
-            <div class="modal-topbar">
-                <div class="section-title">이미지 확대 보기</div>
-                <button id="closeModalBtn" class="ghost-btn" type="button">닫기</button>
+    <!-- Image preview modal -->
+    <div id="imageModal" class="modal">
+        <div class="modal-card">
+            <div class="modal-head">
+                <div class="modal-title">이미지 확대 보기</div>
+                <button id="closeModalBtn" class="btn-ghost">닫기</button>
             </div>
             <img id="modalImage" class="modal-image" alt="확대 이미지" />
             <div id="modalCaption" class="modal-caption"></div>
         </div>
     </div>
 
+    <!-- Toast stack -->
+    <div id="toastStack" class="toast-stack"></div>
+
     <script>
         const { ipcRenderer } = require('electron');
         const path = require('path');
 
+        // ============ DOM refs ============
         const analyzeBtn = document.getElementById('analyzeBtn');
         const stopBtn = document.getElementById('stopBtn');
         const intervalRange = document.getElementById('intervalRange');
-        const intervalValue = document.getElementById('intervalValue');        
+        const intervalValue = document.getElementById('intervalValue');
+        const profileSelect = document.getElementById('profileSelect');
         const selectedVideo = document.getElementById('selectedVideo');
-        const statusDiv = document.getElementById('status');
+        const samplingMeta = document.getElementById('samplingMeta');
+        const profileMeta = document.getElementById('profileMeta');
+
+        const statusLine = document.getElementById('statusLine');
+        const riskSummary = document.getElementById('riskSummary');
+        const missionState = document.getElementById('missionState');
+        const streamInfo = document.getElementById('streamInfo');
+        const modeTag = document.getElementById('modeTag');
+
         const engineStatus = document.getElementById('engineStatus');
         const deviceBadge = document.getElementById('deviceBadge');
         const profileBadge = document.getElementById('profileBadge');
@@ -702,41 +1532,84 @@
         const alBadge = document.getElementById('alBadge');
         const riskBadge = document.getElementById('riskBadge');
         const riskLevelText = document.getElementById('riskLevelText');
-        const streamInfo = document.getElementById('streamInfo');
-        const riskSummary = document.getElementById('riskSummary');
+        const layerStackChips = document.getElementById('layerStackChips');
+
         const liveVideo = document.getElementById('liveVideo');
+        const recDot = document.getElementById('recDot');
+        const hudRisk = document.getElementById('hudRisk');
+        const hudTime = document.getElementById('hudTime');
+        const hudCounts = document.getElementById('hudCounts');
+        const hudFps = document.getElementById('hudFps');
+        const latencyTag = document.getElementById('latencyTag');
+        const frameTag = document.getElementById('frameTag');
+
         const snapshotImage = document.getElementById('snapshotImage');
         const analysisImage = document.getElementById('analysisImage');
         const snapshotTimestamp = document.getElementById('snapshotTimestamp');
         const latestResultMeta = document.getElementById('latestResultMeta');
         const objectList = document.getElementById('objectList');
+        const imagePair = document.getElementById('imagePair');
+        const snapshotTabs = document.getElementById('snapshotTabs');
+
         const currentPersons = document.getElementById('currentPersons');
         const currentVehicles = document.getElementById('currentVehicles');
         const streamFps = document.getElementById('streamFps');
         const inferenceFps = document.getElementById('inferenceFps');
         const snapshotCount = document.getElementById('snapshotCount');
         const analysisCount = document.getElementById('analysisCount');
-        const frameCounter = document.getElementById('frameCounter');
-        const videoTime = document.getElementById('videoTime');
+        const eventCount = document.getElementById('eventCount');
+        const navFeedCount = document.getElementById('navFeedCount');
+        const navEventsCount = document.getElementById('navEventsCount');
+
         const progressFill = document.getElementById('progressFill');
         const progressText = document.getElementById('progressText');
         const progressPercent = document.getElementById('progressPercent');
         const resultPath = document.getElementById('resultPath');
-        const eventCountBadge = document.getElementById('eventCountBadge');
         const recentEvents = document.getElementById('recentEvents');
+        const alertList = document.getElementById('alertList');
+        const alertCount = document.getElementById('alertCount');
         const openEventFolderBtn = document.getElementById('openEventFolderBtn');
+
+        const layerL1L2Fill = document.getElementById('layerL1L2Fill');
+        const layerVlmFill = document.getElementById('layerVlmFill');
+        const layerTrackFill = document.getElementById('layerTrackFill');
+        const layerL1L2Val = document.getElementById('layerL1L2Val');
+        const layerVlmVal = document.getElementById('layerVlmVal');
+        const layerTrackVal = document.getElementById('layerTrackVal');
+
         const imageModal = document.getElementById('imageModal');
         const closeModalBtn = document.getElementById('closeModalBtn');
         const modalImage = document.getElementById('modalImage');
         const modalCaption = document.getElementById('modalCaption');
+        const toastStack = document.getElementById('toastStack');
 
+        const modeToggle = document.getElementById('modeToggle');
+        const runModeTag = document.getElementById('runModeTag');
+        const watchRow = document.getElementById('watchRow');
+        const watchStatusDot = document.getElementById('watchStatusDot');
+        const watchFolderPath = document.getElementById('watchFolderPath');
+        const selectFolderBtn = document.getElementById('selectFolderBtn');
+        const queueBadge = document.getElementById('queueBadge');
+        const lastDetected = document.getElementById('lastDetected');
+
+        // ============ State ============
         let pollTimer = null;
         let isProcessing = false;
         let latestState = null;
+        let lastRiskLevel = 'clear';
+        let lastEventSignature = '';
 
+        // Auto-watch state
+        let runMode = 'manual';
+        let watchFolder = null;
+        const pendingQueue = [];
+        const processedSet = new Set();
+        const SETTINGS_KEY = 'aerosentinel.settings.v1';
+
+        // ============ Helpers ============
         function formatNumber(value, digits = 0) {
-            const number = Number.isFinite(value) ? value : Number(value || 0);
-            return Number.isFinite(number) ? number.toFixed(digits) : (0).toFixed(digits);
+            const n = Number.isFinite(Number(value)) ? Number(value) : 0;
+            return n.toFixed(digits);
         }
 
         function toFileUrl(filePath) {
@@ -752,51 +1625,96 @@
                 .replace(/'/g, '&#39;');
         }
 
-        function updateIntervalLabel() {
-            intervalValue.textContent = `${intervalRange.value}초`;
+        function basename(p) {
+            if (!p) return '';
+            const parts = String(p).replace(/\\/g, '/').split('/');
+            return parts[parts.length - 1] || p;
         }
 
         function riskClass(level) {
-            if (level === 'critical') return 'risk-critical';
-            if (level === 'warning') return 'risk-warning';
-            if (level === 'notice') return 'risk-notice';
+            const lv = String(level || 'clear').toLowerCase();
+            if (lv === 'critical') return 'risk-critical';
+            if (lv === 'warning') return 'risk-warning';
+            if (lv === 'notice') return 'risk-notice';
             return 'risk-clear';
         }
 
+        function riskKor(level) {
+            const map = { clear: '안전', notice: '주의', warning: '경고', critical: '위급' };
+            return map[String(level || 'clear').toLowerCase()] || '안전';
+        }
+
         function setRisk(level) {
-            riskBadge.className = `pill ${riskClass(level)}`;
+            const klass = riskClass(level);
+            riskBadge.className = `led-pill risk-badge ${klass}`;
             riskBadge.textContent = String(level || 'clear').toUpperCase();
-            riskLevelText.className = `pill ${riskClass(level)}`;
-            riskLevelText.textContent = String(level || 'clear');
+            hudRisk.className = `hud-risk-banner ${klass}`;
+            hudRisk.textContent = String(level || 'clear').toUpperCase();
+            riskLevelText.textContent = `${String(level || 'clear').toLowerCase()} · ${riskKor(level)} 상태`;
+
+            if (level && level !== lastRiskLevel && level !== 'clear' && isProcessing) {
+                pushToast(level);
+            }
+            lastRiskLevel = level || 'clear';
+        }
+
+        function setMissionState(text, klass) {
+            missionState.className = `mission-state ${klass}`;
+            missionState.innerHTML = `<span class="led ${klass === 'active' ? 'on' : ''}"></span>${escapeHtml(text)}`;
+        }
+
+        function setEngineLed(state) {
+            const led = engineStatus.querySelector('.led');
+            if (!led) return;
+            led.className = 'led';
+            engineStatus.classList.remove('ready', 'error');
+            if (state === 'ready') {
+                led.classList.add('on');
+                engineStatus.classList.add('ready');
+                engineStatus.innerHTML = '<span class="led on"></span>Engine · Ready';
+            } else if (state === 'error') {
+                led.classList.add('err');
+                engineStatus.classList.add('error');
+                engineStatus.innerHTML = '<span class="led err"></span>Engine · Error';
+            } else {
+                engineStatus.innerHTML = '<span class="led"></span>Engine · Init';
+            }
+        }
+
+        function updateLayerChips(layers) {
+            if (!layers) return;
+            const meta = [
+                { key: 'detector', label: 'L1 · Detector', on: true },
+                { key: 'sahi', label: 'L2 · SAHI', on: !!layers.sahi },
+                { key: 'vlm', label: 'L3 · VLM', on: !!layers.vlm },
+                { key: 'tracker', label: 'L4 · Tracker', on: !!layers.tracker },
+                { key: 'active_learning', label: 'L5 · AL', on: !!layers.active_learning },
+            ];
+            layerStackChips.innerHTML = meta
+                .map((m) => `<span class="layer-chip ${m.on ? 'on' : ''}">${m.label}</span>`)
+                .join('');
         }
 
         function setEngineReady(ready, response = null) {
             analyzeBtn.disabled = !ready || isProcessing;
-            engineStatus.className = 'pill';
-
-            if (ready) {
-                engineStatus.textContent = '엔진 준비 완료';
-                engineStatus.classList.add('ready');
-            } else {
-                engineStatus.textContent = '엔진 준비 중...';
-            }
+            setEngineLed(ready ? 'ready' : 'init');
 
             if (response) {
-                deviceBadge.textContent = `device ${response.device || '-'}`;
-                profileBadge.textContent = response.profile_name ? `profile ${response.profile_name}` : 'profile -';
+                deviceBadge.textContent = `Device · ${response.device || '—'}`;
+                profileBadge.textContent = response.profile_name ? `Profile · ${response.profile_name}` : 'Profile · —';
                 if (response.layers) {
-                    const activeLayers = [];
-                    if (response.layers.sahi) activeLayers.push('SAHI');
-                    if (response.layers.vlm) activeLayers.push('VLM');
-                    if (response.layers.tracker) activeLayers.push('Track');
-                    if (response.layers.active_learning) activeLayers.push('AL');
-                    layersBadge.textContent = activeLayers.length
-                        ? `layers ${activeLayers.join('+')}`
-                        : 'layers off';
+                    const active = [];
+                    if (response.layers.sahi) active.push('SAHI');
+                    if (response.layers.vlm) active.push('VLM');
+                    if (response.layers.tracker) active.push('Track');
+                    if (response.layers.active_learning) active.push('AL');
+                    layersBadge.textContent = active.length ? `Layers · ${active.join('+')}` : 'Layers · off';
+                    updateLayerChips(response.layers);
                 }
             }
         }
 
+        // ============ Polling ============
         function startPolling() {
             stopPolling();
             pollTimer = setInterval(refreshVideoStatus, 250);
@@ -809,21 +1727,27 @@
             }
         }
 
+        // ============ Reset ============
         function resetLiveVideo() {
-            try {
-                liveVideo.pause();
-            } catch (_) {}
+            try { liveVideo.pause(); } catch (_) {}
             liveVideo.removeAttribute('src');
             liveVideo.load();
         }
 
         function resetAnalysisUI() {
             resetLiveVideo();
-
             latestState = null;
+            lastRiskLevel = 'clear';
+            lastEventSignature = '';
 
-            selectedVideo.textContent = '선택된 영상이 없습니다.';
+            selectedVideo.textContent = '없음';
+            samplingMeta.textContent = `${intervalRange.value}초`;
+            profileMeta.textContent = profileSelect.value;
             streamInfo.textContent = 'stream idle';
+            modeTag.textContent = 'sampling mode';
+            setMissionState('대기 중', 'idle');
+            recDot.classList.add('idle');
+
             riskSummary.textContent = '현재 감지된 사람이나 차량이 없습니다.';
             setRisk('clear');
 
@@ -839,33 +1763,63 @@
             inferenceFps.textContent = '0.0';
             snapshotCount.textContent = '0';
             analysisCount.textContent = '0';
-            frameCounter.textContent = '0 / 0';
-            videoTime.textContent = '0.0s';
+            eventCount.textContent = '0';
+            navFeedCount.textContent = '0';
+            navEventsCount.textContent = '0';
+
+            hudTime.textContent = '⏱ 0.0s';
+            hudCounts.textContent = '👤 0 · 🚗 0';
+            hudFps.textContent = '⚡ 0.0 fps';
+            latencyTag.textContent = 'latency · — ms';
+            frameTag.textContent = 'frame · 0 / 0';
 
             progressFill.style.width = '0%';
             progressPercent.textContent = '0%';
             progressText.textContent = '대기 중';
 
-            eventCountBadge.textContent = '이벤트 0건';
-            alBadge.textContent = 'AL 0';
+            alertList.innerHTML = '<div class="empty">아직 감지된 객체가 없습니다.</div>';
+            alertCount.textContent = '0 alerts';
             recentEvents.innerHTML = '<div class="empty">아직 저장된 이벤트가 없습니다.</div>';
             resultPath.textContent = '감지 결과는 results/events 폴더에 저장됩니다.';
+
+            [layerL1L2Fill, layerVlmFill, layerTrackFill].forEach((el) => (el.style.width = '0%'));
+            [layerL1L2Val, layerVlmVal, layerTrackVal].forEach((el) => (el.textContent = '—'));
 
             openEventFolderBtn.disabled = true;
         }
 
+        // ============ Toast ============
+        function pushToast(level) {
+            const titles = {
+                notice: '주의 단계 감지',
+                warning: '경고 단계 감지',
+                critical: '위급 상황 감지',
+            };
+            const klass = String(level).toLowerCase();
+            const node = document.createElement('div');
+            node.className = `toast ${klass}`;
+            node.innerHTML = `
+                <div class="toast-bar"></div>
+                <div>
+                    <div class="toast-title">${escapeHtml(titles[klass] || '감지 이벤트')}</div>
+                    <div class="toast-body">화면 우측 패널과 이벤트 아카이브에서 상세 정보를 확인하세요.</div>
+                </div>
+            `;
+            toastStack.appendChild(node);
+            setTimeout(() => {
+                node.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                node.style.opacity = '0';
+                node.style.transform = 'translateX(20px)';
+                setTimeout(() => node.remove(), 400);
+            }, 4500);
+        }
+
+        // ============ Renderers ============
         function getReadableLabel(item) {
             const raw = String(item.display_label || item.label || 'object');
             const normalized = String(item.label || raw);
-
-            if (normalized === 'person') {
-                return raw === 'person' ? 'person' : `person / ${raw}`;
-            }
-
-            if (normalized === 'vehicle' && raw !== 'vehicle') {
-                return `vehicle / ${raw}`;
-            }
-
+            if (normalized === 'person') return raw === 'person' ? 'person' : `person / ${raw}`;
+            if (normalized === 'vehicle' && raw !== 'vehicle') return `vehicle / ${raw}`;
             return raw;
         }
 
@@ -873,28 +1827,8 @@
             if (!state) return '';
             if (state.event_directory) return state.event_directory;
             if (state.latest_event_path) return path.dirname(state.latest_event_path);
-            const latestResultPath = state.latest_result && state.latest_result.image_path;
-            return latestResultPath ? path.dirname(latestResultPath) : '';
-        }
-
-        function openPreviewModal(src, caption) {
-            if (!src) return;
-            modalImage.src = src;
-            modalCaption.textContent = caption || '';
-            imageModal.classList.add('open');
-        }
-
-        function closePreviewModal() {
-            imageModal.classList.remove('open');
-            modalImage.removeAttribute('src');
-            modalCaption.textContent = '';
-        }
-
-        function bindZoomableImage(img, captionBuilder) {
-            img.addEventListener('click', () => {
-                if (!img.src) return;
-                openPreviewModal(img.src, captionBuilder());
-            });
+            const lp = state.latest_result && state.latest_result.image_path;
+            return lp ? path.dirname(lp) : '';
         }
 
         function renderDetections(result) {
@@ -908,32 +1842,82 @@
 
             objectList.innerHTML = detections.map((item) => {
                 const readable = escapeHtml(getReadableLabel(item));
-                const trackTag = item.track_id != null ? ` <span style="opacity:0.7">#${Number(item.track_id)}</span>` : '';
-                const confirmedTag = item.track_confirmed ? ' <span style="color:#2ecf8d">✓</span>' : '';
-                const vlmTag = item.vlm_positive != null
-                    ? ` <span style="opacity:0.7">vlm ${Number(item.vlm_positive).toFixed(2)}</span>`
-                    : '';
-                return `<div class="object-chip">${readable} ${Number(item.score || 0).toFixed(2)}${trackTag}${confirmedTag}${vlmTag}</div>`;
+                const cat = String(item.label || '').toLowerCase();
+                const cls = cat === 'person' ? 'person' : (cat === 'vehicle' ? 'vehicle' : '');
+                const track = item.track_id != null ? ` <span style="opacity:0.6">#${Number(item.track_id)}</span>` : '';
+                const conf = item.track_confirmed ? ' <span style="color:#7af0bc">✓</span>' : '';
+                const vlm = item.vlm_positive != null ? ` <span style="opacity:0.6">vlm ${Number(item.vlm_positive).toFixed(2)}</span>` : '';
+                return `<div class="object-chip ${cls}">${readable} · ${Number(item.score || 0).toFixed(2)}${track}${conf}${vlm}</div>`;
             }).join('');
 
             const labels = [...new Set(detections.map(getReadableLabel))].join(', ');
             const timings = result.layer_timings_ms || {};
-            const timingParts = [];
-            if (timings.l1_l2_ms != null) timingParts.push(`L1+L2 ${Number(timings.l1_l2_ms).toFixed(0)}ms`);
-            if (timings.vlm_ms != null) timingParts.push(`L3 ${Number(timings.vlm_ms).toFixed(0)}ms`);
-            if (timings.tracker_ms != null) timingParts.push(`L4 ${Number(timings.tracker_ms).toFixed(0)}ms`);
-            const timingLine = timingParts.length ? `레이어 시간: <span class="accent">${escapeHtml(timingParts.join(' · '))}</span>` : '';
-
-            const metaLines = [
+            const lines = [
                 `분석 시각: <span class="accent">${escapeHtml(result.timestamp || '-')}</span>`,
-                `위험 단계: <span class="accent">${escapeHtml(result.risk_level || 'clear')}</span>`,
+                `위험 단계: <span class="accent">${escapeHtml(String(result.risk_level || 'clear').toUpperCase())}</span>`,
                 `사람 ${Number(result.person_count || 0)}명 · 차량 ${Number(result.vehicle_count || 0)}대`,
                 `감지 라벨: ${escapeHtml(labels || '없음')}`,
                 `분석 모드: <span class="accent">${escapeHtml(result.analysis_mode || 'unknown')}</span>`,
-                `저장 이미지: ${escapeHtml(result.image_path || '없음')}`,
+                `저장: ${escapeHtml(basename(result.image_path) || '없음')}`,
             ];
-            if (timingLine) metaLines.push(timingLine);
-            latestResultMeta.innerHTML = metaLines.join('<br>');
+            latestResultMeta.innerHTML = lines.join('<br>');
+
+            renderLayerBars(timings);
+            const total = (timings.l1_l2_ms || 0) + (timings.vlm_ms || 0) + (timings.tracker_ms || 0);
+            latencyTag.textContent = `latency · ${total.toFixed(0)} ms`;
+        }
+
+        function renderLayerBars(timings) {
+            const values = [
+                Number(timings.l1_l2_ms || 0),
+                Number(timings.vlm_ms || 0),
+                Number(timings.tracker_ms || 0),
+            ];
+            const max = Math.max(60, ...values);
+            const fills = [layerL1L2Fill, layerVlmFill, layerTrackFill];
+            const labels = [layerL1L2Val, layerVlmVal, layerTrackVal];
+            values.forEach((v, i) => {
+                fills[i].style.width = `${Math.min(100, (v / max) * 100)}%`;
+                labels[i].textContent = v > 0 ? `${v.toFixed(0)} ms` : '—';
+            });
+        }
+
+        function renderAlertFeed(result, state) {
+            const detections = (result && Array.isArray(result.detections)) ? result.detections : [];
+            const level = String(result?.risk_level || state?.risk_level || 'clear').toLowerCase();
+            const items = [];
+
+            if (detections.length === 0) {
+                items.push(`
+                    <div class="alert-item">
+                        <div class="alert-bar"></div>
+                        <div class="alert-body">
+                            <div class="alert-title">감지된 객체 없음</div>
+                            <div class="alert-detail">${escapeHtml(result?.timestamp || '대기 중')}</div>
+                        </div>
+                        <div class="alert-time">${escapeHtml(state?.latest_snapshot_timestamp || '-')}</div>
+                    </div>
+                `);
+            } else {
+                detections.slice(0, 10).forEach((item) => {
+                    const readable = getReadableLabel(item);
+                    const klass = ['notice', 'warning', 'critical'].includes(level) ? level : 'clear';
+                    items.push(`
+                        <div class="alert-item ${klass}">
+                            <div class="alert-bar"></div>
+                            <div class="alert-body">
+                                <div class="alert-title">${escapeHtml(readable)} · ${Number(item.score || 0).toFixed(2)}</div>
+                                <div class="alert-detail">track #${item.track_id ?? '-'} · risk ${escapeHtml(level)}</div>
+                            </div>
+                            <div class="alert-time">${escapeHtml(result?.timestamp || '-')}</div>
+                        </div>
+                    `);
+                });
+            }
+
+            alertList.innerHTML = items.join('');
+            alertCount.textContent = `${detections.length} alerts`;
+            navFeedCount.textContent = `${detections.length}`;
         }
 
         function renderRecentEvents(events) {
@@ -942,45 +1926,50 @@
                 return;
             }
 
-            recentEvents.innerHTML = events.map((event, index) => {
-                const image = event.path
-                    ? `<img class="zoomable" src="${toFileUrl(event.path)}?t=${encodeURIComponent(event.frame_index || index)}" alt="event-${index}" data-caption="${escapeHtml(`${event.timestamp || '-'} / ${event.path || ''}`)}">`
+            recentEvents.innerHTML = events.map((event, idx) => {
+                const level = String(event.risk_level || 'clear').toLowerCase();
+                const klass = riskClass(level);
+                const img = event.path
+                    ? `<img class="event-thumb" data-caption="${escapeHtml(`${event.timestamp || '-'} / ${event.path || ''}`)}" src="${toFileUrl(event.path)}?t=${encodeURIComponent(event.frame_index || idx)}" alt="event-${idx}">`
                     : '';
-                const labels = Array.isArray(event.labels) && event.labels.length > 0
+                const labels = Array.isArray(event.labels) && event.labels.length
                     ? escapeHtml(event.labels.join(', '))
                     : 'person / vehicle';
                 return `
-                    <div class="event-item">
-                        ${image}
-                        <div class="event-title">${escapeHtml(String(event.risk_level || 'clear').toUpperCase())} / frame ${Number(event.frame_index || 0)}</div>
-                        <div class="event-body">
-                            사람 ${Number(event.persons || 0)}명 · 차량 ${Number(event.vehicles || 0)}대<br>
-                            ${escapeHtml(event.timestamp || '-')}<br>
-                            ${labels}<br>
-                            ${escapeHtml(event.path || '')}
+                    <div class="event-card">
+                        ${img}
+                        <div class="event-card-body">
+                            <div class="event-card-head">
+                                <span class="event-risk ${klass}">${escapeHtml(String(event.risk_level || 'clear').toUpperCase())}</span>
+                                <span class="event-frame">frame ${Number(event.frame_index || 0)}</span>
+                            </div>
+                            <div class="event-info">
+                                <b>사람</b> ${Number(event.persons || 0)} · <b>차량</b> ${Number(event.vehicles || 0)}<br>
+                                ${escapeHtml(event.timestamp || '-')}<br>
+                                ${labels}
+                            </div>
                         </div>
                     </div>
                 `;
             }).join('');
 
             recentEvents.querySelectorAll('img[data-caption]').forEach((img) => {
-                img.addEventListener('click', () => {
-                    openPreviewModal(img.src, img.dataset.caption || '');
-                });
+                img.addEventListener('click', () => openPreviewModal(img.src, img.dataset.caption || ''));
             });
         }
 
+        // ============ Status loop ============
         async function checkModelStatus() {
             const response = await ipcRenderer.invoke('check-engine-status');
 
             if (response.model_loaded) {
                 setEngineReady(true, response);
                 if (!isProcessing) {
-                    statusDiv.textContent = '모델 준비가 완료되었습니다. 드론 영상을 선택해 주세요.';
+                    statusLine.textContent = '모델 준비가 완료되었습니다. 드론 영상을 선택해 주세요.';
                 }
             } else {
                 setEngineReady(false, response);
-                statusDiv.textContent = '아직 모델을 로딩 중입니다.';
+                statusLine.textContent = '아직 모델을 로딩 중입니다.';
             }
         }
 
@@ -991,18 +1980,27 @@
             latestState = state;
             openEventFolderBtn.disabled = !resolveEventDirectory(state);
 
-            currentPersons.textContent = formatNumber(state.current_persons || 0);
-            currentVehicles.textContent = formatNumber(state.current_vehicle_like_objects || 0);
-            streamFps.textContent = formatNumber(state.stream_fps || 0, 1);
-            inferenceFps.textContent = formatNumber(state.inference_fps || 0, 1);
-            snapshotCount.textContent = formatNumber(state.snapshot_count || 0);
-            analysisCount.textContent = formatNumber(state.analysis_count || 0);
-            frameCounter.textContent = `${formatNumber(state.processed_frames || 0)} / ${formatNumber(state.total_frames || 0)}`;
-            videoTime.textContent = `${formatNumber(state.current_video_time || 0, 1)}s`;
-            streamInfo.textContent = `stream ${formatNumber(state.source_fps || 0, 1)}fps / sample ${formatNumber(state.analysis_interval_seconds || 0)}s`;
+            const persons = Number(state.current_persons || 0);
+            const vehicles = Number(state.current_vehicle_like_objects || 0);
+            currentPersons.textContent = persons;
+            currentVehicles.textContent = vehicles;
+            streamFps.textContent = formatNumber(state.stream_fps, 1);
+            inferenceFps.textContent = formatNumber(state.inference_fps, 1);
+            snapshotCount.textContent = formatNumber(state.snapshot_count);
+            analysisCount.textContent = formatNumber(state.analysis_count);
+            eventCount.textContent = formatNumber(state.event_count);
+            navEventsCount.textContent = formatNumber(state.event_count);
+            alBadge.textContent = `AL · ${formatNumber(state.active_learning_saved || 0)}`;
+
+            hudCounts.textContent = `👤 ${persons} · 🚗 ${vehicles}`;
+            hudTime.textContent = `⏱ ${formatNumber(state.current_video_time, 1)}s`;
+            hudFps.textContent = `⚡ ${formatNumber(state.inference_fps, 1)} fps`;
+            frameTag.textContent = `frame · ${formatNumber(state.processed_frames)} / ${formatNumber(state.total_frames)}`;
+
+            streamInfo.textContent = `stream ${formatNumber(state.source_fps, 1)} fps · sample ${formatNumber(state.analysis_interval_seconds, 0)}s`;
+            samplingMeta.textContent = `${formatNumber(state.analysis_interval_seconds, 0)}초`;
             riskSummary.textContent = state.risk_summary || '현재 감지된 사람이나 차량이 없습니다.';
-            eventCountBadge.textContent = `이벤트 ${formatNumber(state.event_count || 0)}건`;
-            alBadge.textContent = `AL ${formatNumber(state.active_learning_saved || 0)}`;
+
             setRisk(state.risk_level || 'clear');
 
             const progress = Math.max(0, Math.min(100, Number(state.progress || 0)));
@@ -1012,11 +2010,9 @@
             if (state.latest_snapshot_base64) {
                 snapshotImage.src = `data:image/jpeg;base64,${state.latest_snapshot_base64}`;
             }
-
             if (state.latest_result_base64) {
                 analysisImage.src = `data:image/jpeg;base64,${state.latest_result_base64}`;
             }
-
             if (state.latest_snapshot_timestamp) {
                 snapshotTimestamp.textContent = state.analysis_pending
                     ? `${state.latest_snapshot_timestamp} · 분석 중`
@@ -1025,10 +2021,11 @@
 
             if (state.latest_result) {
                 renderDetections(state.latest_result);
+                renderAlertFeed(state.latest_result, state);
                 if (state.latest_result.is_final_result === false) {
-                    latestResultMeta.innerHTML += '<br>현재 결과는 빠른 1차 분석 결과입니다.';
+                    latestResultMeta.innerHTML += '<br><span class="accent">빠른 1차 분석 결과입니다.</span>';
                 } else if (state.analysis_pending) {
-                    latestResultMeta.innerHTML += `<br>최신 스냅샷 분석 상태: <span class="accent">${escapeHtml(state.analysis_mode || 'pending')}</span>`;
+                    latestResultMeta.innerHTML += `<br>최신 스냅샷 상태: <span class="accent">${escapeHtml(state.analysis_mode || 'pending')}</span>`;
                 }
             }
 
@@ -1036,9 +2033,9 @@
 
             const eventDirectory = resolveEventDirectory(state);
             if (state.latest_event_path) {
-                resultPath.textContent = `최근 이벤트 이미지: ${state.latest_event_path}`;
+                resultPath.textContent = `최근 이벤트: ${basename(state.latest_event_path)}`;
             } else if (eventDirectory) {
-                resultPath.textContent = `감지 결과는 ${eventDirectory} 폴더에 저장됩니다.`;
+                resultPath.textContent = `저장 폴더: ${eventDirectory}`;
             } else {
                 resultPath.textContent = '감지 결과는 results/events 폴더에 저장됩니다.';
             }
@@ -1047,18 +2044,23 @@
                 isProcessing = true;
                 analyzeBtn.disabled = true;
                 stopBtn.disabled = false;
+                recDot.classList.remove('idle');
                 progressText.textContent = '실시간 분석 중';
-                statusDiv.innerHTML = `원본 영상은 계속 재생 중이고, <span class="accent">${formatNumber(state.analysis_interval_seconds || 0)}</span>초 간격으로 스냅샷 분석을 수행합니다.`;
+                setMissionState('실시간 분석 중', 'active');
+                statusLine.innerHTML = `원본 영상은 1배속 재생 중, <span class="accent">${formatNumber(state.analysis_interval_seconds || 0)}</span>초 간격 스냅샷 분석 수행 중.`;
                 return;
             }
 
             if (state.status === 'completed') {
                 isProcessing = false;
-                analyzeBtn.disabled = false;
+                updateAnalyzeButton();
                 stopBtn.disabled = true;
+                recDot.classList.add('idle');
                 progressText.textContent = '분석 완료';
-                statusDiv.innerHTML = `분석이 완료되었습니다. 총 <span class="accent">${formatNumber(state.analysis_count || 0)}</span>회 분석했습니다.`;
+                setMissionState('분석 완료', 'completed');
+                statusLine.innerHTML = `분석 완료 · 총 <span class="accent">${formatNumber(state.analysis_count || 0)}</span>회 분석.`;
                 stopPolling();
+                if (runMode === 'auto') setTimeout(maybeProcessNextInQueue, 600);
                 return;
             }
 
@@ -1066,8 +2068,10 @@
                 isProcessing = false;
                 analyzeBtn.disabled = false;
                 stopBtn.disabled = true;
+                recDot.classList.add('idle');
                 progressText.textContent = '중지됨';
-                statusDiv.textContent = '사용자 요청으로 분석을 중지했습니다.';
+                setMissionState('중지됨', 'stopped');
+                statusLine.textContent = '사용자 요청으로 분석을 중지했습니다.';
                 stopPolling();
                 return;
             }
@@ -1076,43 +2080,137 @@
                 isProcessing = false;
                 analyzeBtn.disabled = false;
                 stopBtn.disabled = true;
+                recDot.classList.add('idle');
                 progressText.textContent = '오류';
-                statusDiv.textContent = `분석 중 오류가 발생했습니다: ${state.message || '알 수 없는 오류'}`;
+                setMissionState('오류', 'stopped');
+                statusLine.textContent = `분석 중 오류: ${state.message || '알 수 없는 오류'}`;
                 stopPolling();
             }
         }
 
-        ipcRenderer.on('engine-ready', () => {
-            engineStatus.className = 'pill ready';
-            engineStatus.textContent = '엔진 준비 완료';
-            statusDiv.textContent = '엔진 준비가 완료되었습니다. 드론 영상을 선택해 주세요.';
-        });
+        // ============ Modal ============
+        function openPreviewModal(src, caption) {
+            if (!src) return;
+            modalImage.src = src;
+            modalCaption.textContent = caption || '';
+            imageModal.classList.add('open');
+        }
 
-        ipcRenderer.on('engine-crashed', (_, code) => {
-            engineStatus.className = 'pill error';
-            engineStatus.textContent = '엔진 오류';
-            analyzeBtn.disabled = true;
-            stopBtn.disabled = true;
-            statusDiv.textContent = `Python 엔진이 종료되었습니다. 코드: ${code}`;
-            stopPolling();
-        });
+        function closePreviewModal() {
+            imageModal.classList.remove('open');
+            modalImage.removeAttribute('src');
+            modalCaption.textContent = '';
+        }
 
-        analyzeBtn.addEventListener('click', async () => {
-            const response = await ipcRenderer.invoke('start-video-analysis', {
-                analysis_interval_seconds: Number(intervalRange.value),
+        // ============ Snapshot tab ============
+        function setSnapshotView(view) {
+            snapshotTabs.querySelectorAll('.tab').forEach((b) => {
+                b.classList.toggle('active', b.dataset.view === view);
             });
-
-            if (!response) {
-                statusDiv.textContent = '영상 선택을 취소했습니다.';
-                return;
+            const rawCell = imagePair.querySelector('[data-cell="raw"]');
+            const annCell = imagePair.querySelector('[data-cell="annotated"]');
+            imagePair.classList.toggle('split', view === 'split');
+            if (view === 'raw') {
+                rawCell.classList.remove('hidden');
+                annCell.classList.add('hidden');
+            } else if (view === 'annotated') {
+                rawCell.classList.add('hidden');
+                annCell.classList.remove('hidden');
+            } else {
+                rawCell.classList.remove('hidden');
+                annCell.classList.remove('hidden');
             }
+        }
 
-            if (response.status !== 'accepted') {
-                statusDiv.textContent = `분석 시작 실패: ${response.msg || '알 수 없는 오류'}`;
-                return;
+        // ============ Settings + Auto Mode ============
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem(SETTINGS_KEY);
+                if (!raw) return;
+                const s = JSON.parse(raw);
+                runMode = s.mode === 'auto' ? 'auto' : 'manual';
+                watchFolder = s.watchFolder || null;
+                if (Array.isArray(s.processed)) {
+                    s.processed.forEach((p) => processedSet.add(p));
+                }
+            } catch (_) {}
+        }
+
+        function saveSettings() {
+            try {
+                const data = {
+                    mode: runMode,
+                    watchFolder,
+                    processed: [...processedSet].slice(-300),
+                };
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+            } catch (_) {}
+        }
+
+        function updateWatchFolderUI() {
+            if (watchFolder) {
+                watchFolderPath.textContent = watchFolder;
+                watchFolderPath.classList.remove('empty');
+                watchStatusDot.classList.add('on');
+            } else {
+                watchFolderPath.textContent = '선택되지 않음';
+                watchFolderPath.classList.add('empty');
+                watchStatusDot.classList.remove('on');
             }
+        }
 
-            selectedVideo.textContent = `선택 영상: ${response.selected_path}`;
+        function updateQueueBadge() {
+            queueBadge.textContent = `대기열 ${pendingQueue.length}`;
+            queueBadge.classList.toggle('has-items', pendingQueue.length > 0);
+        }
+
+        function updateAnalyzeButton() {
+            if (runMode === 'auto') {
+                analyzeBtn.disabled = true;
+                analyzeBtn.title = '자동 모드 — 폴더에 새 영상이 들어오면 자동으로 분석됩니다';
+            } else {
+                analyzeBtn.disabled = isProcessing || !engineStatus.classList.contains('ready');
+                analyzeBtn.title = '';
+            }
+        }
+
+        async function applyMode(initial = false) {
+            modeToggle.querySelectorAll('.mode-opt').forEach((b) => {
+                b.classList.toggle('active', b.dataset.mode === runMode);
+            });
+            runModeTag.textContent = runMode === 'auto' ? '자동 모드' : '수동 모드';
+
+            if (runMode === 'auto') {
+                watchRow.classList.add('show');
+                updateWatchFolderUI();
+                if (watchFolder) {
+                    const response = await ipcRenderer.invoke('start-folder-watch', watchFolder);
+                    if (response.status === 'ok') {
+                        const existing = response.existing_count || 0;
+                        const newCandidates = existing - [...processedSet].filter((p) => p.startsWith(watchFolder)).length;
+                        statusLine.innerHTML = `자동 감시 ${initial ? '복원' : '시작'} — <span class="accent">${escapeHtml(watchFolder)}</span> · 폴더 내 ${existing}개 중 미처리 후보 ${Math.max(0, newCandidates)}개`;
+                    } else {
+                        statusLine.textContent = `감시 시작 실패: ${response.msg || '알 수 없는 오류'}`;
+                    }
+                } else if (!initial) {
+                    statusLine.textContent = '자동 모드 — 먼저 감시할 폴더를 선택해 주세요.';
+                }
+            } else {
+                watchRow.classList.remove('show');
+                await ipcRenderer.invoke('stop-folder-watch');
+                pendingQueue.length = 0;
+                updateQueueBadge();
+                if (!initial) {
+                    statusLine.textContent = '수동 모드 — 분석 시작 버튼으로 영상을 직접 선택하세요.';
+                }
+            }
+            updateAnalyzeButton();
+        }
+
+        function beginAnalysisUI(response, source) {
+            selectedVideo.textContent = basename(response.selected_path);
+            samplingMeta.textContent = `${response.analysis_interval_seconds || intervalRange.value}초`;
+            profileMeta.textContent = response.analysis_profile || profileSelect.value;
             liveVideo.src = toFileUrl(response.selected_path);
             liveVideo.currentTime = 0;
             liveVideo.playbackRate = 1;
@@ -1121,16 +2219,153 @@
             snapshotImage.removeAttribute('src');
             analysisImage.removeAttribute('src');
             recentEvents.innerHTML = '<div class="empty">이벤트 대기 중...</div>';
+            alertList.innerHTML = '<div class="empty">첫 분석 결과를 기다리는 중...</div>';
             snapshotTimestamp.textContent = '첫 스냅샷을 기다리는 중입니다.';
             latestResultMeta.textContent = '아직 분석 결과가 없습니다.';
             resultPath.textContent = '감지 결과는 results/events 폴더에 저장됩니다.';
 
             isProcessing = true;
             analyzeBtn.disabled = true;
-            stopBtn.disabled = false;            
-            statusDiv.textContent = '원본 영상 재생과 함께 스냅샷 분석을 시작합니다.';
+            stopBtn.disabled = false;
+            recDot.classList.remove('idle');
+            setMissionState(source === 'auto' ? '자동 분석 중' : '실시간 분석 중', 'active');
+            statusLine.innerHTML = source === 'auto'
+                ? `자동 분석 시작 — <span class="accent">${escapeHtml(basename(response.selected_path))}</span>`
+                : '원본 영상 재생과 함께 스냅샷 분석을 시작합니다.';
             progressText.textContent = '분석 시작';
             startPolling();
+        }
+
+        async function maybeProcessNextInQueue() {
+            if (runMode !== 'auto') return;
+            if (isProcessing) return;
+            if (pendingQueue.length === 0) return;
+            if (!engineStatus.classList.contains('ready')) return;
+
+            const next = pendingQueue.shift();
+            updateQueueBadge();
+
+            const response = await ipcRenderer.invoke('start-video-from-path', {
+                video_path: next,
+                analysis_interval_seconds: Number(intervalRange.value),
+                analysis_profile: profileSelect.value,
+            });
+
+            if (!response || response.status !== 'accepted') {
+                statusLine.textContent = `자동 분석 실패 (${basename(next)}): ${response?.msg || '알 수 없는 오류'}`;
+                setTimeout(maybeProcessNextInQueue, 800);
+                return;
+            }
+
+            processedSet.add(next);
+            saveSettings();
+            beginAnalysisUI(response, 'auto');
+        }
+
+        // ============ Events ============
+        ipcRenderer.on('engine-ready', () => {
+            setEngineLed('ready');
+            statusLine.textContent = '엔진 준비가 완료되었습니다. 드론 영상을 선택해 주세요.';
+            // If auto mode + queued items waiting, kick off
+            if (runMode === 'auto') maybeProcessNextInQueue();
+        });
+
+        ipcRenderer.on('engine-crashed', (_, code) => {
+            setEngineLed('error');
+            analyzeBtn.disabled = true;
+            stopBtn.disabled = true;
+            statusLine.textContent = `Python 엔진이 종료되었습니다. 코드: ${code}`;
+            stopPolling();
+        });
+
+        ipcRenderer.on('watched-file-ready', (_, info) => {
+            if (runMode !== 'auto') return;
+            if (!info || !info.path) return;
+            if (processedSet.has(info.path)) return;
+            if (pendingQueue.includes(info.path)) return;
+
+            pendingQueue.push(info.path);
+            updateQueueBadge();
+            lastDetected.textContent = `최근 감지: ${basename(info.path)}`;
+            lastDetected.title = info.path;
+
+            pushAutoToast(info.path);
+            maybeProcessNextInQueue();
+        });
+
+        function pushAutoToast(filePath) {
+            const node = document.createElement('div');
+            node.className = 'toast';
+            node.innerHTML = `
+                <div class="toast-bar" style="background: var(--accent)"></div>
+                <div>
+                    <div class="toast-title">새 영상 감지</div>
+                    <div class="toast-body">${escapeHtml(basename(filePath))}<br>자동 분석 큐에 추가했습니다.</div>
+                </div>
+            `;
+            toastStack.appendChild(node);
+            setTimeout(() => {
+                node.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                node.style.opacity = '0';
+                node.style.transform = 'translateX(20px)';
+                setTimeout(() => node.remove(), 400);
+            }, 3800);
+        }
+
+        modeToggle.addEventListener('click', (e) => {
+            const btn = e.target.closest('.mode-opt');
+            if (!btn) return;
+            const next = btn.dataset.mode;
+            if (next === runMode) return;
+            runMode = next;
+            saveSettings();
+            applyMode();
+        });
+
+        selectFolderBtn.addEventListener('click', async () => {
+            const folder = await ipcRenderer.invoke('select-folder');
+            if (!folder) return;
+
+            if (watchFolder && watchFolder !== folder) {
+                await ipcRenderer.invoke('stop-folder-watch');
+                pendingQueue.length = 0;
+                updateQueueBadge();
+            }
+
+            watchFolder = folder;
+            saveSettings();
+            updateWatchFolderUI();
+
+            if (runMode === 'auto') {
+                const response = await ipcRenderer.invoke('start-folder-watch', folder);
+                if (response.status === 'ok') {
+                    const existing = response.existing_count || 0;
+                    statusLine.innerHTML = `감시 시작 — <span class="accent">${escapeHtml(folder)}</span> · 폴더 내 ${existing}개 영상 검사 시작 (이미 분석한 파일은 자동 제외)`;
+                } else {
+                    statusLine.textContent = `감시 시작 실패: ${response.msg || '알 수 없는 오류'}`;
+                }
+            }
+        });
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (runMode === 'auto') return;
+
+            const response = await ipcRenderer.invoke('start-video-analysis', {
+                analysis_interval_seconds: Number(intervalRange.value),
+                analysis_profile: profileSelect.value,
+            });
+
+            if (!response) {
+                statusLine.textContent = '영상 선택을 취소했습니다.';
+                return;
+            }
+
+            if (response.status !== 'accepted') {
+                statusLine.textContent = `분석 시작 실패: ${response.msg || '알 수 없는 오류'}`;
+                return;
+            }
+
+            beginAnalysisUI(response, 'manual');
         });
 
         stopBtn.addEventListener('click', async () => {
@@ -1138,55 +2373,96 @@
             isProcessing = false;
             stopPolling();
             resetAnalysisUI();
-            analyzeBtn.disabled = engineStatus.classList.contains('ready') ? false : true;
+
+            if (runMode === 'auto') {
+                pendingQueue.length = 0;
+                updateQueueBadge();
+                watchRow.classList.add('show');
+                updateWatchFolderUI();
+                runModeTag.textContent = '자동 모드';
+            }
+            updateAnalyzeButton();
 
             const response = await ipcRenderer.invoke('stop-video-analysis');
             if (response.status === 'ok') {
-                statusDiv.textContent = '분석을 중지하고 화면을 초기화했습니다.';
+                statusLine.textContent = runMode === 'auto'
+                    ? '분석 중지 — 대기열을 비웠습니다. 새 영상이 도착하면 다시 분석합니다.'
+                    : '분석을 중지하고 화면을 초기화했습니다.';
             } else {
-                statusDiv.textContent = `중지 요청 실패: ${response.msg || '알 수 없는 오류'}`;
+                statusLine.textContent = `중지 요청 실패: ${response.msg || '알 수 없는 오류'}`;
             }
         });
 
-        intervalRange.addEventListener('input', updateIntervalLabel);
+        intervalRange.addEventListener('input', () => {
+            intervalValue.textContent = `${intervalRange.value}s`;
+            if (!isProcessing) samplingMeta.textContent = `${intervalRange.value}초`;
+        });
+
+        profileSelect.addEventListener('change', () => {
+            if (!isProcessing) profileMeta.textContent = profileSelect.value;
+        });
 
         openEventFolderBtn.addEventListener('click', async () => {
-            const targetPath = resolveEventDirectory(latestState);
-            if (!targetPath) {
-                statusDiv.textContent = '열 수 있는 저장 폴더가 아직 없습니다.';
+            const target = resolveEventDirectory(latestState);
+            if (!target) {
+                statusLine.textContent = '열 수 있는 저장 폴더가 아직 없습니다.';
                 return;
             }
-
-            const response = await ipcRenderer.invoke('open-path', targetPath);
+            const response = await ipcRenderer.invoke('open-path', target);
             if (response.status !== 'ok') {
-                statusDiv.textContent = `폴더 열기 실패: ${response.msg || '알 수 없는 오류'}`;
+                statusLine.textContent = `폴더 열기 실패: ${response.msg || '알 수 없는 오류'}`;
             }
         });
 
-        bindZoomableImage(snapshotImage, () => {
-            const label = snapshotTimestamp.textContent || '원본 스냅샷';
-            return `원본 스냅샷 / ${label}`;
+        // Snapshot tabs
+        snapshotTabs.addEventListener('click', (event) => {
+            const tab = event.target.closest('.tab');
+            if (!tab) return;
+            setSnapshotView(tab.dataset.view);
         });
 
-        bindZoomableImage(analysisImage, () => {
-            const label = snapshotTimestamp.textContent || '분석 결과';
-            return `분석 결과 / ${label}`;
+        // Snapshot image click to zoom
+        imagePair.querySelectorAll('.image-cell').forEach((cell) => {
+            cell.addEventListener('click', () => {
+                const img = cell.querySelector('img');
+                if (!img || !img.src) return;
+                const label = snapshotTimestamp.textContent || '스냅샷';
+                const caption = `${cell.dataset.cell === 'annotated' ? '분석 결과' : '원본 스냅샷'} / ${label}`;
+                openPreviewModal(img.src, caption);
+            });
         });
 
+        // Navigation: scroll to the matching section inside the content area
+        const contentScroll = document.querySelector('.content');
+        document.querySelectorAll('.nav-item[data-scroll-to]').forEach((item) => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
+                item.classList.add('active');
+
+                const target = document.getElementById(item.dataset.scrollTo);
+                if (!target || !contentScroll) return;
+                const top = target.offsetTop - 12;
+                contentScroll.scrollTo({ top, behavior: 'smooth' });
+            });
+        });
+
+        // Modal
         closeModalBtn.addEventListener('click', closePreviewModal);
         imageModal.addEventListener('click', (event) => {
-            if (event.target === imageModal) {
-                closePreviewModal();
-            }
+            if (event.target === imageModal) closePreviewModal();
         });
-
         window.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && imageModal.classList.contains('open')) {
-                closePreviewModal();
-            }
+            if (event.key === 'Escape' && imageModal.classList.contains('open')) closePreviewModal();
         });
 
-        updateIntervalLabel();
+        // ============ Init ============
+        intervalValue.textContent = `${intervalRange.value}s`;
+        samplingMeta.textContent = `${intervalRange.value}초`;
+        profileMeta.textContent = profileSelect.value;
+        setSnapshotView('raw');
+        loadSettings();
+        updateQueueBadge();
+        applyMode(true);
         checkModelStatus();
         setInterval(checkModelStatus, 1000);
     </script>
