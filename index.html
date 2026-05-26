@@ -531,6 +531,8 @@
                 <div id="engineStatus" class="pill">엔진 준비 중...</div>
                 <div id="deviceBadge" class="pill">device -</div>
                 <div id="profileBadge" class="pill">profile -</div>
+                <div id="layersBadge" class="pill" title="5-Layer Safety Stack 활성 상태">layers -</div>
+                <div id="alBadge" class="pill" title="Active Learning 큐에 저장된 ROI 개수">AL 0</div>
                 <div id="riskBadge" class="pill risk-clear">CLEAR</div>
             </div>
         </section>
@@ -696,6 +698,8 @@
         const engineStatus = document.getElementById('engineStatus');
         const deviceBadge = document.getElementById('deviceBadge');
         const profileBadge = document.getElementById('profileBadge');
+        const layersBadge = document.getElementById('layersBadge');
+        const alBadge = document.getElementById('alBadge');
         const riskBadge = document.getElementById('riskBadge');
         const riskLevelText = document.getElementById('riskLevelText');
         const streamInfo = document.getElementById('streamInfo');
@@ -780,6 +784,16 @@
             if (response) {
                 deviceBadge.textContent = `device ${response.device || '-'}`;
                 profileBadge.textContent = response.profile_name ? `profile ${response.profile_name}` : 'profile -';
+                if (response.layers) {
+                    const activeLayers = [];
+                    if (response.layers.sahi) activeLayers.push('SAHI');
+                    if (response.layers.vlm) activeLayers.push('VLM');
+                    if (response.layers.tracker) activeLayers.push('Track');
+                    if (response.layers.active_learning) activeLayers.push('AL');
+                    layersBadge.textContent = activeLayers.length
+                        ? `layers ${activeLayers.join('+')}`
+                        : 'layers off';
+                }
             }
         }
 
@@ -793,6 +807,51 @@
                 clearInterval(pollTimer);
                 pollTimer = null;
             }
+        }
+
+        function resetLiveVideo() {
+            try {
+                liveVideo.pause();
+            } catch (_) {}
+            liveVideo.removeAttribute('src');
+            liveVideo.load();
+        }
+
+        function resetAnalysisUI() {
+            resetLiveVideo();
+
+            latestState = null;
+
+            selectedVideo.textContent = '선택된 영상이 없습니다.';
+            streamInfo.textContent = 'stream idle';
+            riskSummary.textContent = '현재 감지된 사람이나 차량이 없습니다.';
+            setRisk('clear');
+
+            snapshotImage.removeAttribute('src');
+            analysisImage.removeAttribute('src');
+            snapshotTimestamp.textContent = '아직 캡처된 스냅샷이 없습니다.';
+            latestResultMeta.textContent = '분석 결과가 여기에 표시됩니다.';
+            objectList.innerHTML = '<div class="object-chip">감지된 객체 없음</div>';
+
+            currentPersons.textContent = '0';
+            currentVehicles.textContent = '0';
+            streamFps.textContent = '0.0';
+            inferenceFps.textContent = '0.0';
+            snapshotCount.textContent = '0';
+            analysisCount.textContent = '0';
+            frameCounter.textContent = '0 / 0';
+            videoTime.textContent = '0.0s';
+
+            progressFill.style.width = '0%';
+            progressPercent.textContent = '0%';
+            progressText.textContent = '대기 중';
+
+            eventCountBadge.textContent = '이벤트 0건';
+            alBadge.textContent = 'AL 0';
+            recentEvents.innerHTML = '<div class="empty">아직 저장된 이벤트가 없습니다.</div>';
+            resultPath.textContent = '감지 결과는 results/events 폴더에 저장됩니다.';
+
+            openEventFolderBtn.disabled = true;
         }
 
         function getReadableLabel(item) {
@@ -849,18 +908,32 @@
 
             objectList.innerHTML = detections.map((item) => {
                 const readable = escapeHtml(getReadableLabel(item));
-                return `<div class="object-chip">${readable} ${Number(item.score || 0).toFixed(2)}</div>`;
+                const trackTag = item.track_id != null ? ` <span style="opacity:0.7">#${Number(item.track_id)}</span>` : '';
+                const confirmedTag = item.track_confirmed ? ' <span style="color:#2ecf8d">✓</span>' : '';
+                const vlmTag = item.vlm_positive != null
+                    ? ` <span style="opacity:0.7">vlm ${Number(item.vlm_positive).toFixed(2)}</span>`
+                    : '';
+                return `<div class="object-chip">${readable} ${Number(item.score || 0).toFixed(2)}${trackTag}${confirmedTag}${vlmTag}</div>`;
             }).join('');
 
             const labels = [...new Set(detections.map(getReadableLabel))].join(', ');
-            latestResultMeta.innerHTML = [
+            const timings = result.layer_timings_ms || {};
+            const timingParts = [];
+            if (timings.l1_l2_ms != null) timingParts.push(`L1+L2 ${Number(timings.l1_l2_ms).toFixed(0)}ms`);
+            if (timings.vlm_ms != null) timingParts.push(`L3 ${Number(timings.vlm_ms).toFixed(0)}ms`);
+            if (timings.tracker_ms != null) timingParts.push(`L4 ${Number(timings.tracker_ms).toFixed(0)}ms`);
+            const timingLine = timingParts.length ? `레이어 시간: <span class="accent">${escapeHtml(timingParts.join(' · '))}</span>` : '';
+
+            const metaLines = [
                 `분석 시각: <span class="accent">${escapeHtml(result.timestamp || '-')}</span>`,
                 `위험 단계: <span class="accent">${escapeHtml(result.risk_level || 'clear')}</span>`,
                 `사람 ${Number(result.person_count || 0)}명 · 차량 ${Number(result.vehicle_count || 0)}대`,
                 `감지 라벨: ${escapeHtml(labels || '없음')}`,
                 `분석 모드: <span class="accent">${escapeHtml(result.analysis_mode || 'unknown')}</span>`,
                 `저장 이미지: ${escapeHtml(result.image_path || '없음')}`,
-            ].join('<br>');
+            ];
+            if (timingLine) metaLines.push(timingLine);
+            latestResultMeta.innerHTML = metaLines.join('<br>');
         }
 
         function renderRecentEvents(events) {
@@ -929,6 +1002,7 @@
             streamInfo.textContent = `stream ${formatNumber(state.source_fps || 0, 1)}fps / sample ${formatNumber(state.analysis_interval_seconds || 0)}s`;
             riskSummary.textContent = state.risk_summary || '현재 감지된 사람이나 차량이 없습니다.';
             eventCountBadge.textContent = `이벤트 ${formatNumber(state.event_count || 0)}건`;
+            alBadge.textContent = `AL ${formatNumber(state.active_learning_saved || 0)}`;
             setRisk(state.risk_level || 'clear');
 
             const progress = Math.max(0, Math.min(100, Number(state.progress || 0)));
@@ -1061,9 +1135,14 @@
 
         stopBtn.addEventListener('click', async () => {
             stopBtn.disabled = true;
+            isProcessing = false;
+            stopPolling();
+            resetAnalysisUI();
+            analyzeBtn.disabled = engineStatus.classList.contains('ready') ? false : true;
+
             const response = await ipcRenderer.invoke('stop-video-analysis');
             if (response.status === 'ok') {
-                statusDiv.textContent = '분석 중지 요청을 전달했습니다.';
+                statusDiv.textContent = '분석을 중지하고 화면을 초기화했습니다.';
             } else {
                 statusDiv.textContent = `중지 요청 실패: ${response.msg || '알 수 없는 오류'}`;
             }
