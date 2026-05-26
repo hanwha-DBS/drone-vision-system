@@ -203,3 +203,7 @@ datasets/unlabeled/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Local working copies / backups (do not push)
+/DroneVisionSystem/
+/drone-vision-system/
