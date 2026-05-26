@@ -5,3 +5,12 @@ torch>=2.0.0
 torchvision>=0.15.0
 pyyaml>=6.0.0
 
+# L3 SigLIP zero-shot verifier
+transformers>=4.45.0
+Pillow>=10.0.0
+
+# L4 ByteTrack tracker (provides supervision.ByteTrack)
+supervision>=0.24.0
+
+# L5 / training scripts
+pandas>=2.0.0

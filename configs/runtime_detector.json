@@ -1,24 +1,28 @@
 {
-  "profile_name": "snapshot-detection-v2",
+  "profile_name": "snapshot-detection-v3-5layer",
   "cpu": {
     "model_path": "yolov8l.pt",
     "target_width": 1536,
     "confidence_threshold": 0.09,
     "inference_imgsz": 1536,
+    "architecture": "yolo",
     "secondary_model_path": "rtdetr-l.pt",
     "secondary_target_width": 1536,
     "secondary_confidence_threshold": 0.08,
-    "secondary_inference_imgsz": 1536
+    "secondary_inference_imgsz": 1536,
+    "secondary_architecture": "rtdetr"
   },
   "gpu": {
     "model_path": "yolov8l.pt",
     "target_width": 1792,
     "confidence_threshold": 0.08,
     "inference_imgsz": 1792,
+    "architecture": "yolo",
     "secondary_model_path": "rtdetr-l.pt",
     "secondary_target_width": 1792,
     "secondary_confidence_threshold": 0.07,
-    "secondary_inference_imgsz": 1792
+    "secondary_inference_imgsz": 1792,
+    "secondary_architecture": "rtdetr"
   },
   "fast_sampling": {
     "interval_threshold_seconds": 2,
@@ -26,22 +30,20 @@
     "target_width": 1280,
     "confidence_threshold": 0.1,
     "inference_imgsz": 1280,
+    "architecture": "yolo",
     "disable_secondary": true
-  },  
-  "allowed_classes": [
-    "person",
-    "car",
-    "truck",
-    "bus",
-    "vehicle"
-  ],
+  },
+  "allowed_classes": ["person", "car", "truck", "bus", "vehicle"],
   "class_aliases": {
     "person": "person",
     "car": "vehicle",
     "truck": "vehicle",
     "bus": "vehicle",
     "dump_truck": "vehicle",
-    "tanker_truck": "vehicle"
+    "tanker_truck": "vehicle",
+    "suv": "vehicle",
+    "van": "vehicle",
+    "excavator": "vehicle"
   },
   "class_min_scores": {
     "person": 0.12,
@@ -66,6 +68,65 @@
     "nms_iou_threshold": 0.42,
     "prefer_secondary_for_vehicle": true
   },
+  "sahi": {
+    "enabled": true,
+    "tile_size": 768,
+    "overlap": 0.25,
+    "min_tile_score": 0.0,
+    "nms_iou_threshold": 0.5,
+    "max_tiles": 36
+  },
+  "vlm": {
+    "enabled": true,
+    "model_id": "google/siglip-base-patch16-224",
+    "crop_padding": 0.1,
+    "min_crop_size": 32,
+    "reject_if_top_is_negative": false,
+    "min_positive_margin": 0.0,
+    "positive_prompts": {
+      "person": [
+        "an aerial photo of a person wearing a high-visibility safety vest",
+        "an aerial drone photo of a worker on the ground",
+        "a person standing on rocky terrain seen from above"
+      ],
+      "vehicle": [
+        "an aerial photo of a dump truck on a mine site",
+        "an aerial photo of a tanker truck or fuel truck",
+        "an aerial photo of an excavator or loader on a mine site",
+        "an aerial photo of a pickup truck or SUV on a construction site"
+      ]
+    },
+    "hard_negative_prompts": [
+      "a pile of rocks and gravel",
+      "a long shadow on the ground",
+      "an empty patch of dirt or sand",
+      "the metal edge of a machine arm",
+      "construction debris and rubble",
+      "white gravel patch on the ground",
+      "a tarp or plastic sheet"
+    ]
+  },
+  "tracker": {
+    "enabled": true,
+    "backend": "bytetrack",
+    "track_activation_threshold": 0.15,
+    "lost_track_buffer": 30,
+    "minimum_matching_threshold": 0.6,
+    "confirm_window": 5,
+    "confirm_min_hits": 3,
+    "fallback_iou": 0.3
+  },
+  "active_learning": {
+    "enabled": true,
+    "root_directory": "datasets/active_learning",
+    "confidence_min": 0.3,
+    "confidence_max": 0.6,
+    "crop_padding": 0.15,
+    "save_vlm_rejected": true,
+    "save_unconfirmed_tracks": true,
+    "max_crops_per_snapshot": 6
+  },
+  "require_confirmation_for_alarm": false,
   "preview_jpeg_quality": 88,
   "preview_max_width": 1400,
   "sampling": {

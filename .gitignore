@@ -173,9 +173,33 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# Cursor  
-#  Cursor is an AI-powered code editor.`.cursorignore` specifies files/directories to 
+# Cursor
+#  Cursor is an AI-powered code editor.`.cursorignore` specifies files/directories to
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# ---- Drone Vision System project-specific ----
+node_modules/
+
+# Model weights — track via LFS or a download script, not git
+*.pt
+*.onnx
+*.engine
+*.trt
+
+# Runtime outputs
+results/
+runs/
+
+# Active learning queue (regenerated at runtime)
+datasets/active_learning/rois/
+datasets/active_learning/manifest.csv
+datasets/synthetic/
+datasets/unlabeled/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
