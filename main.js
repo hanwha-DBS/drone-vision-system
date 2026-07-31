@@ -1,12 +1,18 @@
 const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const zmq = require('zeromq');
+
+const ENGINE_PORT = 5555;
 
 let mainWindow;
 let pythonProcess = null;
 let engineReady = false;
+// Last error-ish line seen on the engine's stdout/stderr, surfaced in the
+// engine-crashed event so the UI can show *why* it died (e.g. port in use).
+let lastEngineError = '';
 
 // ===== Watch folder state =====
 const VIDEO_EXTS = /\.(mp4|avi|mov|mkv|webm)$/i;
@@ -41,7 +47,7 @@ async function pollWatchFolder() {
             if (now - prev.since >= WATCH_STABILITY_MS) {
                 watchSeenFiles.add(full);
                 watchStability.delete(full);
-                if (mainWindow) {
+                if (mainWindow && !mainWindow.isDestroyed()) {
                     mainWindow.webContents.send('watched-file-ready', {
                         path: full,
                         size: stat.size,
@@ -55,11 +61,63 @@ async function pollWatchFolder() {
     }
 }
 
-function startPythonEngine() {
-    return new Promise((resolve) => {
-        console.log('[Main] starting python engine');
+function resolvePythonPath() {
+    // Prefer the project venv (pinned ultralytics/transformers versions);
+    // fall back to whatever `python` is on PATH.
+    const venvPython = path.join(__dirname, '.venv', 'Scripts', 'python.exe');
+    return fsSync.existsSync(venvPython) ? venvPython : 'python';
+}
 
-        pythonProcess = spawn('python', ['engine.py'], {
+function freeEnginePort() {
+    // Best-effort cleanup of an orphaned engine. If a previous engine process
+    // didn't exit cleanly (app force-closed / crashed), it keeps port 5555
+    // bound and the fresh engine crashes at bind() with "Address in use" —
+    // before it can print READY — which the UI shows as an engine error.
+    // Find the (single) process owning the port and, if it's a python, kill
+    // it so the new engine can bind. Never rejects — the spawn proceeds either
+    // way, and engine.py now reports a clear message if the port is still held.
+    return new Promise((resolve) => {
+        if (process.platform === 'win32') {
+            const ps = [
+                `$conns = Get-NetTCPConnection -LocalPort ${ENGINE_PORT} -State Listen -ErrorAction SilentlyContinue;`,
+                `foreach ($procId in ($conns.OwningProcess | Select-Object -Unique)) {`,
+                `  $p = Get-Process -Id $procId -ErrorAction SilentlyContinue;`,
+                `  if ($p -and $p.ProcessName -like 'python*') {`,
+                `    Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue;`,
+                `    Write-Output "freed engine port from python PID $procId";`,
+                `  }`,
+                `}`,
+            ].join(' ');
+            execFile(
+                'powershell.exe',
+                ['-NoProfile', '-NonInteractive', '-Command', ps],
+                (err, stdout) => {
+                    if (stdout && stdout.trim()) console.log('[Main]', stdout.trim());
+                    // Give Windows a moment to release the port after the kill.
+                    setTimeout(resolve, 400);
+                }
+            );
+        } else {
+            // mac/linux: lsof gives the listener pid; kill it best-effort.
+            execFile(
+                '/bin/sh',
+                ['-c', `lsof -ti tcp:${ENGINE_PORT} -sTCP:LISTEN | xargs -r kill -9`],
+                () => setTimeout(resolve, 200)
+            );
+        }
+    });
+}
+
+async function startPythonEngine() {
+    // Clear any orphaned engine holding the port before spawning a fresh one.
+    await freeEnginePort();
+
+    return new Promise((resolve) => {
+        const pythonPath = resolvePythonPath();
+        console.log('[Main] starting python engine:', pythonPath);
+        lastEngineError = '';
+
+        pythonProcess = spawn(pythonPath, ['engine.py'], {
             cwd: __dirname,
             env: {
                 ...process.env,
@@ -76,9 +134,15 @@ function startPythonEngine() {
 
                 console.log('[Python]', log);
 
+                // engine.py prints fatal startup problems (e.g. port bind
+                // failure) to stdout with this prefix — remember the last one.
+                if (log.includes('[AI Engine ERR]')) {
+                    lastEngineError = log;
+                }
+
                 if (log.includes('READY')) {
                     engineReady = true;
-                    if (mainWindow) {
+                    if (mainWindow && !mainWindow.isDestroyed()) {
                         mainWindow.webContents.send('engine-ready');
                     }
                     resolve();
@@ -87,13 +151,18 @@ function startPythonEngine() {
         });
 
         pythonProcess.stderr.on('data', (data) => {
-            console.error('[Python ERR]', data.toString());
+            const text = data.toString();
+            const lastLine = text.trim().split('\n').pop();
+            if (lastLine) lastEngineError = lastLine;
+            console.error('[Python ERR]', text);
         });
 
         pythonProcess.on('close', (code) => {
             engineReady = false;
-            if (mainWindow) {
-                mainWindow.webContents.send('engine-crashed', code);
+            // The engine's close event also fires during app shutdown, after
+            // the BrowserWindow has been destroyed — sending to it then throws.
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('engine-crashed', { code, detail: lastEngineError });
             }
         });
     });
@@ -123,6 +192,7 @@ function createWindow() {
         minWidth: 1280,
         minHeight: 860,
         backgroundColor: '#071017',
+        icon: path.join(__dirname, 'Resources', 'hanwha.ico'),
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -130,12 +200,29 @@ function createWindow() {
     });
 
     mainWindow.loadFile('index.html');
+    mainWindow.on('closed', () => {
+        mainWindow = null;
+    });
 }
 
-app.whenReady().then(async () => {
-    createWindow();
-    await startPythonEngine();
-});
+// Single-instance lock: a second launch must not spawn a second engine that
+// would collide on port 5555. Hand focus to the existing window instead.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+    app.quit();
+} else {
+    app.on('second-instance', () => {
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+        }
+    });
+
+    app.whenReady().then(async () => {
+        createWindow();
+        await startPythonEngine();
+    });
+}
 
 app.on('will-quit', () => {
     if (watchInterval) {
@@ -158,7 +245,10 @@ ipcMain.handle('check-engine', () => ({ ready: engineReady }));
 
 ipcMain.handle('check-engine-status', async () => {
     try {
-        return await sendZmqRequest({ type: 'status' });
+        // Short timeout on purpose: this is the liveness poll. With the default
+        // 120s the renderer's error path could never fire for a hung engine —
+        // the request just hung and the UI kept showing "loading" forever.
+        return await sendZmqRequest({ type: 'status' }, 6000);
     } catch {
         return {
             status: 'error',
@@ -190,6 +280,7 @@ ipcMain.handle('start-video-analysis', async (_, options = {}) => {
                 video_path: filePaths[0],
                 analysis_interval_seconds: analysisInterval,
                 analysis_profile: analysisProfile,
+                pause_at_end: true,
             },
             10000
         );
@@ -209,6 +300,22 @@ ipcMain.handle('start-video-analysis', async (_, options = {}) => {
     }
 });
 
+ipcMain.handle('get-engine-settings', async () => {
+    try {
+        return await sendZmqRequest({ type: 'get_settings' }, 10000);
+    } catch (err) {
+        return { status: 'error', msg: err.message };
+    }
+});
+
+ipcMain.handle('save-engine-settings', async (_, settings = {}) => {
+    try {
+        return await sendZmqRequest({ type: 'update_settings', settings }, 10000);
+    } catch (err) {
+        return { status: 'error', msg: err.message };
+    }
+});
+
 ipcMain.handle('get-video-analysis-status', async () => {
     try {
         return await sendZmqRequest({ type: 'video_status' }, 10000);
@@ -221,6 +328,58 @@ ipcMain.handle('stop-video-analysis', async () => {
     try {
         return await sendZmqRequest({ type: 'stop_video' }, 10000);
     } catch (err) {
+        return { status: 'error', msg: err.message };
+    }
+});
+
+ipcMain.handle('pause-video-analysis', async (_, paused = true) => {
+    try {
+        return await sendZmqRequest({ type: 'pause_video', paused: !!paused }, 10000);
+    } catch (err) {
+        return { status: 'error', msg: err.message };
+    }
+});
+
+ipcMain.handle('seek-video-analysis', async (_, fraction = 0) => {
+    try {
+        return await sendZmqRequest({ type: 'seek_video', fraction: Number(fraction) || 0 }, 10000);
+    } catch (err) {
+        return { status: 'error', msg: err.message };
+    }
+});
+
+ipcMain.handle('capture-frame-analysis', async () => {
+    try {
+        return await sendZmqRequest({ type: 'capture_frame' }, 10000);
+    } catch (err) {
+        return { status: 'error', msg: err.message };
+    }
+});
+
+ipcMain.handle('quit-app', async () => {
+    app.quit();
+    return { status: 'ok' };
+});
+
+ipcMain.handle('select-image', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile'],
+        filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'bmp', 'webp'] }],
+    });
+    if (canceled || filePaths.length === 0) return null;
+    return { path: filePaths[0] };
+});
+
+ipcMain.handle('analyze-image', async (_, imagePath, analysisProfile = 'balanced') => {
+    if (!imagePath) return { status: 'error', msg: 'image path required' };
+    try {
+        // CPU full-stack analysis of one image can take a while — allow time.
+        return await sendZmqRequest(
+            { type: 'analyze_image', image_path: imagePath, analysis_profile: String(analysisProfile || 'balanced') },
+            180000
+        );
+    } catch (err) {
+        if (err.message === 'TIMEOUT') return { status: 'error', msg: 'analysis timed out' };
         return { status: 'error', msg: err.message };
     }
 });

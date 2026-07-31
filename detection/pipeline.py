@@ -19,15 +19,31 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 
 from .active_learning import ActiveLearningConfig, ActiveLearningSink
-from .detector import DetectorConfig, FilterConfig, L1Detector, merge_detections
+from .detector import DetectorConfig, FilterConfig, L1Detector, create_detector, merge_detections, merge_detections_wbf
 from .sahi_runner import SahiConfig, run_sahi
 from .tracker import TemporalTracker, TrackerConfig
 from .vlm_verifier import VLMConfig, VLMVerifier
 
 
+class NullProgress:
+    """No-op load-progress sink.
+
+    Model construction reports which stage it is on so the UI can show a real
+    checklist instead of a guessed animation. Callers that don't care (tests,
+    scripts/smoke_pipeline.py) get this stub, so the reporting calls below
+    never need a `if progress is not None` guard.
+    """
+
+    def begin(self, key: str, detail: Optional[str] = None) -> None: ...
+    def done(self, key: str, detail: Optional[str] = None) -> None: ...
+    def skip(self, key: str, reason: str = "") -> None: ...
+    def fail(self, key: str, message: str) -> None: ...
+
+
 @dataclass
 class EnsembleConfig:
     enabled: bool = True
+    fusion: str = "wbf"  # "wbf" | "nms"
     nms_iou_threshold: float = 0.42
     prefer_secondary_for_vehicle: bool = True
 
@@ -65,23 +81,73 @@ def _time_ms(t0: float) -> float:
 class DetectionPipeline:
     """Runs all five layers on a single snapshot frame."""
 
-    def __init__(self, config: PipelineConfig):
+    def __init__(self, config: PipelineConfig, progress: Optional["NullProgress"] = None):
         self.config = config
-        self._primary = L1Detector(config.primary, config.filter)
-        self._secondary = (
-            L1Detector(config.secondary, config.filter)
-            if config.secondary and config.ensemble.enabled
-            else None
-        )
-        self._fast = (
-            L1Detector(config.fast, config.filter)
-            if config.fast and config.fast.model_path
-            else self._primary
-        )
+        self._progress = progress or NullProgress()
+
+        self._progress.begin("primary_detector", config.primary.model_path)
+        self._primary = create_detector(config.primary, config.filter)
+        self._progress.done("primary_detector")
+
+        if config.secondary and config.ensemble.enabled:
+            self._progress.begin("secondary_detector", config.secondary.model_path)
+            self._secondary = create_detector(config.secondary, config.filter)
+            self._progress.done("secondary_detector")
+        else:
+            self._secondary = None
+            self._progress.skip("secondary_detector", "설정에서 비활성")
+
+        if config.fast and config.fast.model_path:
+            self._progress.begin("fast_detector", config.fast.model_path)
+            self._fast = create_detector(config.fast, config.filter)
+            self._progress.done("fast_detector")
+        else:
+            self._fast = self._primary
+            self._progress.skip("fast_detector", "기본 검출기 재사용")
+
         self._vlm = VLMVerifier(config.vlm)
+
+        # ByteTrack pulls in `supervision` on construction — around a second,
+        # and the last thing between "all detectors loaded" and "ready".
+        self._progress.begin("tracker", config.tracker.backend)
         self._tracker = TemporalTracker(config.tracker)
         self._active_learning = ActiveLearningSink(config.active_learning)
+        self._progress.done("tracker")
+
         self._snapshot_step = 0
+        # UI profile (fast / balanced / accurate) that gates which layers run.
+        # None falls back to the legacy interval-based behavior.
+        self._active_profile: Optional[str] = None
+
+    def set_active_profile(self, profile: Optional[str]) -> None:
+        p = (profile or "").strip().lower()
+        self._active_profile = p if p in ("fast", "balanced", "accurate") else None
+
+    def _profile_plan(self, interval_seconds: int) -> Dict[str, bool]:
+        """Resolve which layers a profile permits.
+
+        fast      -> L1 + L3(VLM)
+        balanced  -> L1 + L2(SAHI) + L3(VLM) + L4(Tracker)
+        accurate  -> full stack L1~L5 (+ secondary/ensemble + VLM)
+        None      -> legacy: interval decides fast vs full; all layers allowed.
+
+        VLM runs in EVERY profile: it is the only gate against persistent
+        look-alikes (rocks, crushed stone read as "person") — the tracker
+        cannot reject those because they never leave the frame, and since the
+        batched SigLIP pass costs well under a second it fits even the fast
+        budget.
+        """
+        p = self._active_profile
+        if p == "fast":
+            return {"fast": True, "sahi": False, "vlm": True, "tracker": False, "secondary": False}
+        if p == "balanced":
+            return {"fast": False, "sahi": True, "vlm": True, "tracker": True, "secondary": False}
+        if p == "accurate":
+            return {"fast": False, "sahi": True, "vlm": True, "tracker": True, "secondary": True}
+        return {
+            "fast": interval_seconds <= self.config.fast_interval_threshold_seconds,
+            "sahi": True, "vlm": True, "tracker": True, "secondary": True,
+        }
 
     def reset_session(self) -> None:
         self._tracker.reset()
@@ -94,18 +160,28 @@ class DetectionPipeline:
         # warmup(); without this, the first snapshot blocks for ~30s while
         # SigLIP fetches weights.
         if self.config.vlm.enabled:
+            self._progress.begin("vlm", self.config.vlm.model_id)
             try:
-                self._vlm._ensure_loaded()
+                if self._vlm._ensure_loaded():
+                    self._progress.done("vlm")
+                else:
+                    # _ensure_loaded returns False on its own internal failure.
+                    self._progress.fail("vlm", "VLM 로드 실패")
             except Exception as exc:
                 print(f"[Pipeline] VLM warmup failed: {exc}", flush=True)
+                self._progress.fail("vlm", str(exc))
+        else:
+            self._progress.skip("vlm", "설정에서 비활성")
 
     def describe_active_layers(self) -> Dict[str, bool]:
+        # Effective layers = config-enabled AND permitted by the active profile.
+        plan = self._profile_plan(999)
         return {
-            "sahi": bool(self.config.sahi.enabled),
-            "vlm": bool(self.config.vlm.enabled),
-            "tracker": bool(self.config.tracker.enabled),
-            "active_learning": bool(self.config.active_learning.enabled),
-            "ensemble": bool(self.config.ensemble.enabled and self._secondary is not None),
+            "sahi": bool(self.config.sahi.enabled and plan["sahi"]),
+            "vlm": bool(self.config.vlm.enabled and plan["vlm"]),
+            "tracker": bool(self.config.tracker.enabled and plan["tracker"]),
+            "active_learning": bool(self.config.active_learning.enabled and not plan["fast"]),
+            "ensemble": bool(self.config.ensemble.enabled and self._secondary is not None and plan["secondary"]),
         }
 
     @property
@@ -124,35 +200,40 @@ class DetectionPipeline:
     def run(self, frame: np.ndarray, frame_index: int, interval_seconds: int) -> PipelineResult:
         import time
 
-        fast_mode = interval_seconds <= self.config.fast_interval_threshold_seconds
+        plan = self._profile_plan(interval_seconds)
+        fast_mode = plan["fast"]
+        use_secondary = self._secondary is not None and plan["secondary"]
         timings: Dict[str, float] = {}
 
         # L1 + L2 (no SAHI in fast mode to stay under time budget)
         t0 = time.perf_counter()
         if fast_mode:
             raw = self._fast.predict(frame)
-            analysis_mode = "fast-interval"
+            analysis_mode = (self._active_profile or "fast") + "-fast"
         else:
-            raw = self._l1_l2(frame, self._primary, use_sahi=True)
-            if self._secondary is not None and not (fast_mode and self.config.fast_disable_secondary):
-                raw_secondary = self._l1_l2(frame, self._secondary, use_sahi=True)
+            raw = self._l1_l2(frame, self._primary, use_sahi=plan["sahi"])
+            if use_secondary:
+                raw_secondary = self._l1_l2(frame, self._secondary, use_sahi=plan["sahi"])
                 raw.extend(raw_secondary)
-            analysis_mode = "full-ensemble" if self._secondary is not None else "primary-only"
+            analysis_mode = self._active_profile or ("full-ensemble" if use_secondary else "primary-only")
         timings["l1_l2_ms"] = _time_ms(t0)
 
-        # Ensemble merge (NMS across primary + secondary)
+        # Ensemble merge (WBF or NMS across primary + secondary)
         t0 = time.perf_counter()
-        if self.config.ensemble.enabled and not fast_mode:
-            raw = merge_detections(
+        if self.config.ensemble.enabled and use_secondary:
+            merge_fn = merge_detections_wbf if self.config.ensemble.fusion == "wbf" else merge_detections
+            raw = merge_fn(
                 raw,
                 iou_threshold=self.config.ensemble.nms_iou_threshold,
                 prefer_secondary_for_vehicle=self.config.ensemble.prefer_secondary_for_vehicle,
             )
         timings["ensemble_ms"] = _time_ms(t0)
 
-        # L3 VLM verification (skipped in fast mode)
+        # L3 VLM verification (skipped unless the profile permits it).
+        # Note: runs in fast mode too — the profile plan, not fast_mode,
+        # decides; false-positive filtering is needed at every speed tier.
         t0 = time.perf_counter()
-        if not fast_mode and self.config.vlm.enabled:
+        if plan["vlm"] and self.config.vlm.enabled:
             verified = self._vlm.verify(frame, raw)
         else:
             for det in raw:
@@ -167,7 +248,7 @@ class DetectionPipeline:
         # frame-index-based window of size ~5 would always be empty.
         self._snapshot_step += 1
         t0 = time.perf_counter()
-        if self.config.tracker.enabled:
+        if self.config.tracker.enabled and plan["tracker"]:
             tracked = self._tracker.update(self._snapshot_step, verified)
             confirmed = (
                 self._tracker.filter_confirmed(tracked)
@@ -197,9 +278,12 @@ class DetectionPipeline:
         )
 
 
-def build_pipeline(runtime_config: Dict, device: str) -> DetectionPipeline:
+def build_pipeline(runtime_config: Dict, device: str,
+                   progress: Optional[NullProgress] = None) -> DetectionPipeline:
     """Translate the runtime_detector.json dict into a DetectionPipeline."""
-    device_section = runtime_config[device]
+    progress = progress or NullProgress()
+    # Torch device names ("cuda"/"cpu") map onto the config's "gpu"/"cpu" sections.
+    device_section = runtime_config["gpu" if device == "cuda" else "cpu"]
     filter_config = FilterConfig(
         allowed_classes=tuple(runtime_config.get("allowed_classes", FilterConfig().allowed_classes)),
         class_aliases=dict(runtime_config.get("class_aliases", FilterConfig().class_aliases)),
@@ -217,6 +301,7 @@ def build_pipeline(runtime_config: Dict, device: str) -> DetectionPipeline:
         half=use_half,
         device=device,
         tag="primary",
+        tta=bool(device_section.get("tta", False)),
     )
     secondary = None
     if device_section.get("secondary_model_path"):
@@ -248,6 +333,7 @@ def build_pipeline(runtime_config: Dict, device: str) -> DetectionPipeline:
     ensemble_section = runtime_config.get("ensemble", {})
     ensemble = EnsembleConfig(
         enabled=bool(ensemble_section.get("enabled", True)),
+        fusion=str(ensemble_section.get("fusion", "wbf")),
         nms_iou_threshold=float(ensemble_section.get("nms_iou_threshold", 0.42)),
         prefer_secondary_for_vehicle=bool(ensemble_section.get("prefer_secondary_for_vehicle", True)),
     )
@@ -255,6 +341,7 @@ def build_pipeline(runtime_config: Dict, device: str) -> DetectionPipeline:
     sahi_section = runtime_config.get("sahi", {})
     sahi_config = SahiConfig(
         enabled=bool(sahi_section.get("enabled", True)),
+        fusion=str(sahi_section.get("fusion", "wbf")),
         tile_size=int(sahi_section.get("tile_size", 768)),
         overlap=float(sahi_section.get("overlap", 0.25)),
         min_tile_score=float(sahi_section.get("min_tile_score", 0.0)),
@@ -271,6 +358,9 @@ def build_pipeline(runtime_config: Dict, device: str) -> DetectionPipeline:
         min_crop_size=int(vlm_section.get("min_crop_size", 32)),
         reject_if_top_is_negative=bool(vlm_section.get("reject_if_top_is_negative", True)),
         min_positive_margin=float(vlm_section.get("min_positive_margin", 0.05)),
+        max_verifications=int(vlm_section.get("max_verifications", 40)),
+        auto_trust_above=float(vlm_section.get("auto_trust_above", 0.45)),
+        batch_size=int(vlm_section.get("batch_size", 16)),
         positive_prompts=dict(vlm_section.get("positive_prompts", VLMConfig().positive_prompts)),
         hard_negative_prompts=list(vlm_section.get("hard_negative_prompts", VLMConfig().hard_negative_prompts)),
         skip_labels=tuple(vlm_section.get("skip_labels", ())),
@@ -314,9 +404,14 @@ def build_pipeline(runtime_config: Dict, device: str) -> DetectionPipeline:
             sahi_config.enabled = False
         if not bool(cpu_overrides.get("allow_vlm", False)):
             vlm_config.enabled = False
+            # Claim the stage here rather than in warmup(), so the UI shows
+            # *why* it was skipped (CPU auto-disable) instead of the generic
+            # "disabled in config" reason.
+            progress.skip("vlm", "CPU 모드 — 자동 비활성")
         if not bool(cpu_overrides.get("allow_secondary", False)):
             secondary = None
             ensemble.enabled = False
+            progress.skip("secondary_detector", "CPU 모드 — 자동 비활성")
         # On CPU the N-of-M rule is fine to keep, but the user wants to see
         # boxes immediately, so we lower the default to 1-of-3 unless they
         # override.
@@ -337,7 +432,7 @@ def build_pipeline(runtime_config: Dict, device: str) -> DetectionPipeline:
         active_learning=al_config,
         require_confirmation_for_alarm=bool(runtime_config.get("require_confirmation_for_alarm", True)),
     )
-    pipeline = DetectionPipeline(pipeline_config)
+    pipeline = DetectionPipeline(pipeline_config, progress=progress)
 
     layers = pipeline.describe_active_layers()
     print(

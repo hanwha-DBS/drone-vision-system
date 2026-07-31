@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Hanwha · Drone Detection System</title>
+    <style>
+        /* Bundled locally so the desktop app renders correctly offline. */
+        @font-face {
+            font-family: "Pretendard Variable";
+            src: url("Resources/fonts/PretendardVariable.woff2") format("woff2-variations");
+            font-weight: 45 920;
+            font-display: swap;
+        }
+
+        /* ============================================================
+           AeroSentinel — Command Console
+           Dark operational console. Flat surfaces, 1px hairlines,
+           one disciplined accent (Hanwha orange), monospace telemetry.
+           ============================================================ */
+        :root {
+            /* Deep slate ground with a faint cool bias — chosen, not default grey */
+            --bg:        #0b0e13;
+            --panel:     #11151c;
+            --panel-2:   #161b23;
+            --panel-3:   #1c222c;
+            --line:      rgba(148, 163, 184, 0.13);
+            --line-2:    rgba(148, 163, 184, 0.20);
+
+            --text:      #e7ecf3;
+            --text-2:    #a4afbe;
+            --muted:     #6b7686;
+            --faint:     #4a5361;
+
+            /* Brand — Hanwha orange. Reserved for primary action, active state, person. */
+            --brand:     #f37321;
+            --brand-2:   #ff8535;
+            --brand-dim: rgba(243, 115, 33, 0.14);
+            --accent:    #f37321;   /* legacy alias used by toast JS */
+
+            /* Semantic risk ramp — kept distinct from the brand accent */
+            --clear:     #34b98a;
+            --notice:    #d9a441;
+            --warning:   #ec8a3c;
+            --critical:  #e5484d;
+
+            /* Detection class colors (data viz, not chrome) */
+            --cls-person:  #f37321;
+            --cls-vehicle: #46c2b8;
+
+            --radius-lg: 8px;
+            --radius:    7px;
+            --radius-sm: 5px;
+
+            --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+            --sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+
+            --ring: 0 0 0 3px rgba(243, 115, 33, 0.40);
+        }
+
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+
+        body {
+            margin: 0;
+            color: var(--text);
+            background: var(--bg);
+            font-family: var(--sans);
+            font-size: 13px;
+            line-height: 1.45;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+            overflow: hidden;
+        }
+
+        .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+        .label {
+            font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+            color: var(--muted); font-weight: 600;
+        }
+        .accent { color: var(--brand); font-family: var(--mono); font-weight: 700; }
+
+        :focus-visible { outline: none; box-shadow: var(--ring); border-radius: 4px; }
+
+        /* Risk ramp — a single variable each component reads from */
+        .risk-clear    { --rc: var(--clear); }
+        .risk-notice   { --rc: var(--notice); }
+        .risk-warning  { --rc: var(--warning); }
+        .risk-critical { --rc: var(--critical); }
+
+        /* ============ Shell ============ */
+        .shell {
+            display: grid;
+            grid-template-columns: 56px 1fr;
+            grid-template-rows: 46px 1fr;
+            height: 100vh;
+        }
+
+        /* ============ Icon rail ============ */
+        .rail {
+            grid-row: 1 / -1;
+            background: var(--panel);
+            border-right: 1px solid var(--line);
+            display: flex; flex-direction: column; align-items: center;
+            padding: 10px 0; gap: 6px;
+            z-index: 20;
+        }
+        .brand-logo {
+            width: 34px; height: 34px; border-radius: 7px;
+            background: var(--brand);
+            display: grid; place-items: center;
+            margin-bottom: 12px; cursor: pointer;
+            overflow: hidden;
+        }
+        .brand-logo-img { width: 22px; height: 22px; object-fit: contain; }
+        .rail-btn {
+            position: relative;
+            width: 40px; height: 40px; border-radius: 7px; border: 0; cursor: pointer;
+            background: transparent; color: var(--muted);
+            display: grid; place-items: center;
+            transition: background .12s, color .12s;
+        }
+        .rail-btn:hover { background: var(--panel-3); color: var(--text-2); }
+        .rail-btn.active { background: var(--brand-dim); color: var(--brand); }
+        .rail-btn svg { width: 19px; height: 19px; }
+        .rail-spacer { flex: 1; }
+        .nav-tag {
+            position: absolute; top: 3px; right: 3px;
+            min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
+            background: var(--brand); color: #0b0e13;
+            font-family: var(--mono); font-size: 9px; font-weight: 700;
+            display: grid; place-items: center;
+        }
+
+        /* ============ Status bar ============ */
+        .statusbar {
+            grid-column: 2;
+            display: flex; align-items: center; gap: 12px;
+            padding: 0 16px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--line);
+            z-index: 10;
+        }
+        .sb-sep { width: 1px; height: 18px; background: var(--line); }
+        .sb-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+        .mission-state {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-weight: 700; font-size: 12.5px; letter-spacing: 0.01em;
+            color: var(--text);
+        }
+        .mission-state .led {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--muted); flex: 0 0 auto;
+        }
+        .mission-state.idle .led      { background: var(--muted); }
+        .mission-state.active .led    { background: var(--clear); box-shadow: 0 0 0 0 rgba(52,185,138,0.5); animation: pulse 1.8s infinite; }
+        .mission-state.completed .led { background: #5b8def; }
+        .mission-state.stopped .led   { background: var(--critical); }
+        @keyframes pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(52,185,138,0.45); }
+            70%  { box-shadow: 0 0 0 6px rgba(52,185,138,0); }
+            100% { box-shadow: 0 0 0 0 rgba(52,185,138,0); }
+        }
+
+        .sb-tag {
+            font-family: var(--mono); font-size: 11px; color: var(--text-2);
+            padding: 3px 9px; border: 1px solid var(--line); border-radius: 5px;
+            background: var(--panel-2);
+        }
+        .led-pill {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 4px 10px; border-radius: 5px;
+            border: 1px solid var(--line); background: var(--panel-2);
+            font-size: 11px; color: var(--text-2); white-space: nowrap;
+        }
+        .led-pill .led {
+            width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
+        }
+        .led-pill .led.on  { background: var(--clear); }
+        .led-pill .led.err { background: var(--critical); }
+        .led-pill.ready { color: var(--text); }
+        .led-pill.error { color: var(--critical); border-color: rgba(229,72,77,0.4); }
+
+        /* risk badge — used in the instrument cluster */
+        .risk-badge {
+            font-family: var(--mono); font-weight: 800; letter-spacing: 0.04em;
+            color: var(--rc, var(--clear));
+            border: 0; background: transparent; padding: 0;
+            font-size: 18px;
+        }
+
+        /* ============ Content (scroll container) ============ */
+        .content {
+            grid-column: 2; position: relative; overflow-y: auto; overflow-x: hidden;
+            padding: 12px 16px 16px;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+
+        /* ---- Engine banner / prep ---- */
+        .engine-banner {
+            display: none; align-items: center; gap: 9px;
+            padding: 9px 14px; border-radius: var(--radius);
+            background: rgba(229, 72, 77, 0.10); border: 1px solid rgba(229,72,77,0.35);
+            color: #ffb4b7; font-size: 12.5px;
+        }
+        .engine-banner.show { display: flex; }
+        .engine-banner .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--critical); }
+
+        .engine-prep {
+            display: none; flex-direction: column; gap: 7px;
+            padding: 11px 14px; border-radius: var(--radius);
+            background: var(--panel); border: 1px solid var(--line);
+        }
+        .engine-prep.show { display: flex; }
+        .engine-prep-head { display: flex; align-items: center; justify-content: space-between; }
+        .engine-prep-head .label { display: inline-flex; align-items: center; gap: 9px; text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--text-2); }
+        .engine-prep-head .pct { font-family: var(--mono); font-size: 12px; color: var(--brand); font-weight: 700; }
+        .engine-prep-track { height: 4px; border-radius: 3px; background: var(--panel-3); overflow: hidden; }
+        .engine-prep-fill { height: 100%; width: 0%; background: var(--brand); border-radius: 3px; transition: width .2s ease; }
+        .spinner {
+            width: 13px; height: 13px; border-radius: 50%;
+            border: 2px solid var(--line-2); border-top-color: var(--brand);
+            animation: spin .8s linear infinite; flex: 0 0 auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ============ Command strip ============ */
+        .command { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .mode-toggle { display: flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+        .mode-opt {
+            border: 0; background: transparent; color: var(--text-2); cursor: pointer;
+            padding: 7px 13px; font-size: 12px; font-weight: 600; font-family: var(--sans);
+            border-right: 1px solid var(--line);
+        }
+        .mode-opt:last-child { border-right: 0; }
+        .mode-opt:hover { color: var(--text); }
+        .mode-opt.active { background: var(--brand); color: #0b0e13; }
+
+        .ctl-group {
+            display: flex; align-items: center; gap: 9px;
+            padding: 6px 11px 6px 12px;
+            background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+        }
+        .ctl-group label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+        .ctl-value { font-family: var(--mono); font-size: 12px; color: var(--text); font-weight: 600; min-width: 22px; }
+        input[type="range"] { accent-color: var(--brand); height: 4px; }
+        .ctl-group input[type="range"] { width: 92px; }
+        select#profileSelect {
+            background: var(--panel-3); color: var(--text); border: 1px solid var(--line-2);
+            border-radius: 5px; padding: 4px 8px; font-size: 12px; font-family: var(--mono); cursor: pointer;
+        }
+
+        .cmd-spacer { flex: 1; }
+        .btn-primary, .btn-danger, .btn-ghost {
+            display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+            padding: 8px 15px; border-radius: 6px; font-size: 12.5px; font-weight: 700;
+            font-family: var(--sans); border: 1px solid transparent; white-space: nowrap;
+        }
+        .btn-primary svg, .btn-danger svg, .btn-ghost svg { width: 14px; height: 14px; }
+        .btn-primary { background: var(--brand); color: #0b0e13; }
+        .btn-primary:hover:not(:disabled) { background: var(--brand-2); }
+        .btn-danger { background: transparent; color: var(--critical); border-color: rgba(229,72,77,0.4); }
+        .btn-danger:hover:not(:disabled) { background: rgba(229,72,77,0.12); }
+        .btn-ghost { background: transparent; color: var(--text-2); border-color: var(--line-2); }
+        .btn-ghost:hover:not(:disabled) { background: var(--panel-2); color: var(--text); }
+        .btn-primary:disabled, .btn-danger:disabled, .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ---- Watch / stream rows ---- */
+        .watch-row {
+            display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+            padding: 9px 13px; border-radius: var(--radius);
+            background: var(--panel); border: 1px solid var(--line); font-size: 12px;
+        }
+        .watch-row.show { display: flex; }
+        .watch-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+        .watch-status-dot.on { background: var(--clear); }
+        .watch-folder-path { font-family: var(--mono); font-size: 11.5px; color: var(--text-2); }
+        .watch-folder-path.empty { color: var(--faint); }
+        .watch-last { margin-left: auto; font-size: 11px; color: var(--muted); font-family: var(--mono); }
+        .queue-badge {
+            font-family: var(--mono); font-size: 10.5px; color: var(--text-2);
+            padding: 2px 8px; border: 1px solid var(--line); border-radius: 4px;
+        }
+        .queue-badge.has-items { color: var(--brand); border-color: rgba(243,115,33,0.4); }
+        .stream-url-input {
+            flex: 1; min-width: 220px;
+            background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 5px;
+            color: var(--text); font-family: var(--mono); font-size: 12px; padding: 6px 10px;
+        }
+        .stream-url-input::placeholder { color: var(--faint); }
+
+        /* ============ Instrument cluster ============ */
+        .instruments {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(120px, 1.15fr)) repeat(5, minmax(84px, 1fr));
+            background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .inst { padding: 11px 15px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .inst:last-child { border-right: 0; }
+        .inst .label { display: flex; align-items: center; gap: 6px; }
+        .inst .big { font-family: var(--mono); font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: -0.01em; }
+        .inst .num { font-family: var(--mono); font-size: 19px; font-weight: 600; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+        .inst .unit { font-size: 10px; color: var(--faint); font-family: var(--mono); }
+        .inst.person  .big { color: var(--cls-person); }
+        .inst.vehicle .big { color: var(--cls-vehicle); }
+        .sev-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+        /* ============ Stage ============ */
+        .stage { display: grid; grid-template-columns: 1fr 348px; gap: 12px; align-items: start; }
+        .panel {
+            background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+            display: flex; flex-direction: column; min-width: 0; overflow: hidden;
+        }
+        .panel-head {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 10px 14px; border-bottom: 1px solid var(--line);
+        }
+        .card-title { font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--text); }
+        .card-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+        .card-tags { display: flex; align-items: center; gap: 8px; }
+        .tag, .frame-tag {
+            font-family: var(--mono); font-size: 11px; color: var(--text-2);
+            padding: 3px 8px; border: 1px solid var(--line); border-radius: 5px;
+        }
+
+        .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--critical); animation: blink 1.4s infinite; }
+        .rec-dot.idle { background: var(--muted); animation: none; }
+        @keyframes blink { 50% { opacity: 0.25; } }
+
+        /* ---- Viewer stage ---- */
+        .viewer-stage {
+            position: relative; aspect-ratio: 16 / 9; min-height: 320px;
+            /* Derive size from a capped height so the 16:9 box shrinks as a
+               whole (no side letterboxing) and the events archive below stays
+               on-screen. width:auto + align-self:center stop the flex column
+               from stretching it to full width. */
+            height: 56vh; max-height: 56vh; width: auto; max-width: 100%;
+            align-self: center; margin: 0 auto;
+            background:
+                repeating-linear-gradient(45deg, #0d1117 0 12px, #0f141b 12px 24px);
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .viewer-stage::after {
+            content: "영상 대기 중"; position: absolute; color: var(--faint);
+            font-family: var(--mono); font-size: 12px; letter-spacing: 0.05em;
+        }
+        .viewer-stage.has-media::after { display: none; }
+        #liveVideo, #liveStreamImg { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; background: #000; }
+
+        .viewer-hud {
+            position: absolute; inset: 0; z-index: 3;
+            padding: 12px; display: flex; flex-direction: column; justify-content: space-between;
+            pointer-events: none;
+        }
+        .hud-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .hud-risk-banner {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-family: var(--mono); font-weight: 800; font-size: 13px; letter-spacing: 0.06em;
+            padding: 7px 12px; border-radius: 6px;
+            color: var(--rc, var(--clear));
+            background: rgba(11, 14, 19, 0.72); border: 1px solid var(--rc, var(--clear));
+        }
+        .hud-pill {
+            font-family: var(--mono); font-size: 11.5px; color: rgba(231,236,243,0.9);
+            padding: 5px 9px; border-radius: 5px;
+            background: rgba(11, 14, 19, 0.62); border: 1px solid var(--line);
+        }
+
+        /* ---- Progress row ---- */
+        .progress-row { display: flex; align-items: center; gap: 11px; padding: 9px 14px; border-top: 1px solid var(--line); }
+        .pause-btn {
+            width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--line-2);
+            background: var(--panel-2); color: var(--text-2); display: grid; place-items: center; cursor: pointer; flex: 0 0 auto;
+        }
+        .pause-btn:hover:not(:disabled) { color: var(--text); background: var(--panel-3); }
+        .pause-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .progress-label { font-size: 11.5px; color: var(--text-2); white-space: nowrap; min-width: 88px; }
+        .progress-bar {
+            flex: 1; height: 6px; border-radius: 3px; background: var(--panel-3); position: relative; cursor: default;
+        }
+        .progress-bar.seekable { cursor: pointer; }
+        .progress-fill { height: 100%; width: 0%; background: var(--brand); border-radius: 3px; }
+        .progress-knob {
+            position: absolute; top: 50%; left: 0%; width: 12px; height: 12px; border-radius: 50%;
+            background: #fff; border: 2px solid var(--brand); transform: translate(-50%, -50%);
+            opacity: 0; transition: opacity .12s;
+        }
+        .progress-bar.seekable .progress-knob { opacity: 1; }
+        .progress-percent { font-family: var(--mono); font-size: 11px; color: var(--text-2); min-width: 34px; text-align: right; }
+
+        .status-line {
+            padding: 9px 14px; border-top: 1px solid var(--line);
+            font-size: 12px; color: var(--text-2);
+        }
+
+        /* ---- Snapshot card ---- */
+        .snapshot-head-actions { display: flex; align-items: center; gap: 8px; }
+        .tab-group { display: flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+        .tab {
+            border: 0; background: transparent; color: var(--muted); cursor: pointer;
+            padding: 4px 10px; font-size: 11px; font-weight: 600; font-family: var(--sans);
+            border-right: 1px solid var(--line);
+        }
+        .tab:last-child { border-right: 0; }
+        .tab.active { background: var(--panel-3); color: var(--brand); }
+
+        .image-pair { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 12px 14px; }
+        .image-pair.split { grid-template-columns: 1fr 1fr; }
+        .image-cell {
+            position: relative; aspect-ratio: 4 / 3; border-radius: var(--radius-sm); overflow: hidden;
+            border: 1px solid var(--line); background: var(--panel-3); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .image-cell.hidden { display: none; }
+        .image-cell img { width: 100%; height: 100%; object-fit: contain; }
+        .image-cell img:not([src]) { display: none; }
+        .image-tag {
+            position: absolute; top: 6px; left: 6px; font-family: var(--mono); font-size: 9px; font-weight: 700;
+            padding: 2px 6px; border-radius: 3px; background: rgba(0,0,0,0.6); color: var(--text-2);
+        }
+        .image-tag.analysis { color: var(--brand); }
+        .image-pair.is-waiting .image-cell::after {
+            content: "분석 중…"; position: absolute; inset: 0; display: grid; place-items: center;
+            font-family: var(--mono); font-size: 11px; color: var(--text-2); background: rgba(11,14,19,0.55);
+        }
+
+        /* ============ Events archive ============ */
+        .events-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;
+            padding: 12px 14px;
+        }
+        .events-grid .empty { grid-column: 1 / -1; color: var(--faint); font-size: 12px; text-align: center; padding: 24px 0; }
+        .event-card {
+            border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden;
+            background: var(--panel-2);
+        }
+        .event-thumb { width: 100%; height: 118px; object-fit: cover; display: block; cursor: pointer; background: var(--panel-3); }
+        .event-card-body { padding: 9px 11px; }
+        .event-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+        .event-risk {
+            font-family: var(--mono); font-size: 9.5px; font-weight: 800; letter-spacing: 0.04em;
+            color: var(--rc, var(--clear)); padding: 2px 6px; border-radius: 3px;
+            border: 1px solid var(--rc, var(--clear)); background: transparent;
+        }
+        .event-frame { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+        .event-info { font-size: 11px; color: var(--text-2); line-height: 1.6; }
+        .event-info b { color: var(--text); font-weight: 600; }
+
+        /* ============ Modal ============ */
+        .modal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(6, 9, 13, 0.78); }
+        .modal.open { display: grid; place-items: center; }
+        .modal-card {
+            background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--radius-lg);
+            display: flex; flex-direction: column; max-width: 94vw; max-height: 92vh; overflow: hidden;
+        }
+        .image-modal-card { width: 1100px; }
+        .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+        .modal-title { font-size: 13px; font-weight: 700; color: var(--text); }
+        .modal-head-actions { display: flex; align-items: center; gap: 8px; }
+        .modal-counter { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+        .modal-stage {
+            position: relative; flex: 1; min-height: 0; overflow: hidden;
+            display: grid; place-items: center; background: #05070a; cursor: default;
+        }
+        .modal-stage.zoomed { cursor: grab; }
+        .modal-stage.panning { cursor: grabbing; }
+        .modal-image { max-width: 100%; max-height: calc(92vh - 120px); user-select: none; transform-origin: center center; }
+        .nav-arrow {
+            position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
+            width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-2);
+            background: rgba(11,14,19,0.7); color: var(--text); display: grid; place-items: center; cursor: pointer;
+        }
+        .nav-arrow:hover { background: var(--panel-3); }
+        .nav-arrow.prev { left: 14px; }
+        .nav-arrow.next { right: 14px; }
+        .nav-arrow.hidden { display: none; }
+        .modal-caption { padding: 10px 16px; font-size: 11.5px; color: var(--text-2); font-family: var(--mono); border-top: 1px solid var(--line); }
+
+        /* ============ Settings ============ */
+        .settings-card { width: 620px; }
+        .modal-body { padding: 8px 20px 16px; overflow-y: auto; }
+        .settings-group { padding: 14px 0; border-bottom: 1px solid var(--line); }
+        .settings-group:last-child { border-bottom: 0; }
+        .settings-group-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); font-weight: 700; margin-bottom: 10px; }
+        .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 0; }
+        .setting-label { font-size: 12.5px; color: var(--text); font-weight: 600; }
+        .setting-desc { font-size: 11px; color: var(--muted); margin-top: 3px; max-width: 380px; line-height: 1.5; }
+        .setting-control { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+        .setting-control input[type="range"] { width: 130px; }
+        .setting-control input[type="number"] {
+            width: 60px; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 5px;
+            color: var(--text); font-family: var(--mono); font-size: 12px; padding: 5px 8px;
+        }
+        .setting-val { font-family: var(--mono); font-size: 12px; color: var(--text-2); min-width: 30px; }
+        .modal-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 20px; border-top: 1px solid var(--line); }
+        .foot-note { font-size: 11px; color: var(--muted); }
+        .foot-actions { display: flex; align-items: center; gap: 9px; }
+
+        /* toggle switch */
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex: 0 0 auto; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; inset: 0; cursor: pointer; border-radius: 22px;
+            background: var(--panel-3); border: 1px solid var(--line-2); transition: .18s;
+        }
+        .slider::before {
+            content: ""; position: absolute; height: 16px; width: 16px; left: 2px; top: 2px;
+            border-radius: 50%; background: var(--muted); transition: .18s;
+        }
+        .switch input:checked + .slider { background: var(--brand-dim); border-color: var(--brand); }
+        .switch input:checked + .slider::before { background: var(--brand); transform: translateX(18px); }
+        .switch input:disabled + .slider { opacity: 0.45; cursor: not-allowed; }
+
+        /* ============ Toasts ============ */
+        .toast-stack { position: fixed; right: 18px; bottom: 18px; z-index: 200; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            display: flex; gap: 11px; align-items: stretch;
+            width: 320px; padding: 12px 14px; border-radius: var(--radius);
+            background: var(--panel); border: 1px solid var(--line-2);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+        }
+        .toast-bar { width: 3px; border-radius: 2px; background: var(--brand); flex: 0 0 auto; }
+        .toast.notice   .toast-bar { background: var(--notice); }
+        .toast.warning  .toast-bar { background: var(--warning); }
+        .toast.critical .toast-bar { background: var(--critical); }
+        .toast-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
+        .toast-body { font-size: 11px; color: var(--text-2); margin-top: 3px; line-height: 1.5; }
+
+        /* ============ Scrollbar ============ */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-thumb { background: var(--panel-3); border-radius: 5px; border: 2px solid var(--bg); }
+        ::-webkit-scrollbar-thumb:hover { background: #2a323e; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        /* ============ Responsive ============ */
+        @media (max-width: 1120px) {
+            .stage { grid-template-columns: 1fr; }
+            .instruments { grid-template-columns: repeat(4, 1fr); }
+            .inst:nth-child(4) { border-right: 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .mission-state.active .led, .rec-dot, .spinner { animation: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <!-- ============ ICON RAIL ============ -->
+        <nav class="rail">
+            <div class="brand-logo" title="더블클릭하면 프로그램을 종료합니다">
+                <img src="Resources/hanwha.ico" alt="Hanwha" class="brand-logo-img" />
+            </div>
+            <button class="rail-btn nav-item active" data-scroll-to="liveSection" title="라이브 분석" aria-label="라이브 분석">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/></svg>
+            </button>
+            <button class="rail-btn nav-item" data-scroll-to="eventsSection" title="이벤트 아카이브" aria-label="이벤트 아카이브">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M3 10h18"/></svg>
+                <span class="nav-tag" id="navEventsCount">0</span>
+            </button>
+            <div class="rail-spacer"></div>
+            <button id="settingsBtn" class="rail-btn" title="감지/분석 설정" aria-label="설정">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+        </nav>
+
+        <!-- ============ STATUS BAR ============ -->
+        <header class="statusbar">
+            <div id="missionState" class="mission-state idle"><span class="led"></span>대기 중</div>
+            <div class="sb-sep"></div>
+            <div id="streamInfo" class="sb-tag">stream idle</div>
+            <div id="runModeTag" class="sb-tag">수동 모드</div>
+            <div class="sb-right">
+                <div id="engineStatus" class="led-pill"><span class="led"></span>Engine · Init</div>
+                <div id="deviceBadge" class="led-pill">Device · —</div>
+            </div>
+        </header>
+
+        <!-- ============ CONTENT ============ -->
+        <main class="content">
+            <div id="engineBanner" class="engine-banner">
+                <span class="dot"></span>
+                <span id="engineBannerText">AI 엔진 연결에 문제가 발생했습니다.</span>
+            </div>
+            <div id="enginePrep" class="engine-prep">
+                <div class="engine-prep-head">
+                    <span class="label"><span class="spinner"></span><span id="enginePrepText">AI 모델을 준비하고 있습니다… (최초 실행 시 다운로드로 더 걸릴 수 있습니다)</span></span>
+                    <span class="pct" id="enginePrepPct">0%</span>
+                </div>
+                <div class="engine-prep-track"><div class="engine-prep-fill" id="enginePrepFill"></div></div>
+            </div>
+
+            <!-- Live section -->
+            <section id="liveSection" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Command strip -->
+                <div class="command">
+                    <div class="mode-toggle" id="modeToggle" title="사진: 단일 이미지 분석 / 수동: 직접 선택 / 자동: 폴더 감시 / 스트림: 스트리밍 주소 분석">
+                        <button class="mode-opt" data-mode="photo">사진 분석</button>
+                        <button class="mode-opt active" data-mode="manual">수동</button>
+                        <button class="mode-opt" data-mode="auto">자동</button>
+                        <button class="mode-opt" data-mode="stream">스트림</button>
+                    </div>
+                    <div class="ctl-group">
+                        <label for="intervalRange">분석 간격</label>
+                        <input type="range" id="intervalRange" min="1" max="10" value="3" />
+                        <span class="ctl-value" id="intervalValue">3s</span>
+                    </div>
+                    <div class="ctl-group">
+                        <label for="profileSelect">프로필</label>
+                        <select id="profileSelect">
+                            <option value="fast">fast</option>
+                            <option value="balanced" selected>balanced</option>
+                            <option value="accurate">accurate</option>
+                        </select>
+                    </div>
+                    <div class="cmd-spacer"></div>
+                    <button id="stopBtn" class="btn-danger" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                        분석 중지
+                    </button>
+                    <button id="analyzeBtn" class="btn-primary" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        드론 영상 선택 후 분석 시작
+                    </button>
+                </div>
+
+                <!-- watch / stream rows -->
+                <div class="watch-row" id="watchRow">
+                    <span class="watch-status-dot" id="watchStatusDot"></span>
+                    <span style="font-weight: 600;">감시 폴더</span>
+                    <span class="watch-folder-path empty" id="watchFolderPath">선택되지 않음</span>
+                    <button id="selectFolderBtn" class="btn-ghost" style="padding:5px 11px; font-size:11px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        찾아보기
+                    </button>
+                    <span class="queue-badge" id="queueBadge">대기열 0</span>
+                    <span class="watch-last" id="lastDetected">최근 감지: —</span>
+                </div>
+                <div class="watch-row" id="streamRow">
+                    <span class="watch-status-dot" id="streamStatusDot"></span>
+                    <span style="font-weight: 600;">스트림 주소</span>
+                    <input type="text" id="streamUrlInput" class="stream-url-input" spellcheck="false"
+                           placeholder="rtsp://… 또는 http://… 스트리밍 주소를 입력하세요" />
+                    <span class="watch-last" id="streamHint">시작을 누르면 실시간 드론 영상에 스트리밍되며 분석이 시작됩니다.</span>
+                </div>
+
+                <!-- Instrument cluster -->
+                <div class="instruments">
+                    <div class="inst person">
+                        <span class="label"><span class="sev-dot" style="background:var(--cls-person)"></span>사람 / PERSON</span>
+                        <span class="big" id="currentPersons">0</span>
+                        <span class="unit">live tracks</span>
+                    </div>
+                    <div class="inst vehicle">
+                        <span class="label"><span class="sev-dot" style="background:var(--cls-vehicle)"></span>차량 / VEHICLE</span>
+                        <span class="big" id="currentVehicles">0</span>
+                        <span class="unit">live tracks</span>
+                    </div>
+                    <div class="inst">
+                        <span class="label">위험도 / RISK</span>
+                        <span id="riskBadge" class="risk-badge risk-clear">CLEAR</span>
+                        <span class="unit">current level</span>
+                    </div>
+                    <div class="inst">
+                        <span class="label">이벤트</span>
+                        <span class="num" id="eventCount">0</span>
+                        <span class="unit">saved</span>
+                    </div>
+                    <div class="inst">
+                        <span class="label">스냅샷</span>
+                        <span class="num" id="snapshotCount">0</span>
+                        <span class="unit"><span id="analysisCount">0</span> analyzed</span>
+                    </div>
+                    <div class="inst">
+                        <span class="label">추론 FPS</span>
+                        <span class="num" id="inferenceFps">0.0</span>
+                        <span class="unit">inference</span>
+                    </div>
+                    <div class="inst">
+                        <span class="label">원본 FPS</span>
+                        <span class="num" id="streamFps">0.0</span>
+                        <span class="unit">stream</span>
+                    </div>
+                </div>
+
+                <!-- Stage -->
+                <div class="stage">
+                    <!-- Viewer -->
+                    <section class="panel">
+                        <div class="panel-head">
+                            <div>
+                                <div class="card-title">
+                                    <span id="recDot" class="rec-dot idle"></span>
+                                    실시간 드론 영상
+                                </div>
+                                <div class="card-sub" id="statusLine">Python 엔진과 모델을 준비하고 있습니다.</div>
+                            </div>
+                            <div class="card-tags">
+                                <span class="tag" id="frameTag">frame · 0 / 0</span>
+                            </div>
+                        </div>
+                        <div class="viewer-stage">
+                            <video id="liveVideo" muted playsinline preload="auto"></video>
+                            <img id="liveStreamImg" alt="실시간 스트림" style="display: none;" />
+                            <div class="viewer-hud">
+                                <div class="hud-row">
+                                    <div id="hudRisk" class="hud-risk-banner risk-clear">CLEAR</div>
+                                    <div class="hud-pill" id="hudTime">0.0s</div>
+                                </div>
+                                <div class="hud-row">
+                                    <div class="hud-pill" id="hudCounts">사람 0 · 차량 0</div>
+                                    <div class="hud-pill" id="hudFps">0.0 fps</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="progress-row">
+                            <button id="pauseBtn" class="pause-btn" disabled title="일시정지 / 재개">
+                                <svg class="ic-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+                                <svg class="ic-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display:none"><polygon points="7 4 19 12 7 20 7 4"/></svg>
+                            </button>
+                            <button id="captureBtn" class="pause-btn" disabled title="현재 프레임 캡처 후 분석 (일시정지 중)">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            </button>
+                            <div class="progress-label" id="progressText">대기 중</div>
+                            <div class="progress-bar" id="progressBar" title="클릭하거나 드래그해 분석 위치를 이동합니다">
+                                <div id="progressFill" class="progress-fill"></div>
+                                <div id="progressKnob" class="progress-knob"></div>
+                            </div>
+                            <div class="progress-percent" id="progressPercent">0%</div>
+                        </div>
+                        <div class="status-line" id="riskSummary">현재 감지된 사람이나 차량이 없습니다.</div>
+                    </section>
+
+                    <!-- Right rail: snapshot -->
+                    <aside class="panel">
+                        <div class="panel-head">
+                            <div>
+                                <div class="card-title">캡처 스냅샷</div>
+                                <div class="card-sub" id="snapshotTimestamp">아직 캡처된 스냅샷이 없습니다.</div>
+                            </div>
+                            <div class="snapshot-head-actions">
+                                <button id="loadImageBtn" class="btn-ghost" style="display:none; padding:5px 11px; font-size:11px;" title="이미지를 불러와 즉시 분석합니다">불러오기</button>
+                                <div class="tab-group" id="snapshotTabs">
+                                    <button class="tab" data-view="raw">원본</button>
+                                    <button class="tab" data-view="annotated">분석</button>
+                                    <button class="tab active" data-view="split">분할</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="imagePair" class="image-pair split">
+                            <div class="image-cell" data-cell="raw">
+                                <img id="snapshotImage" alt="원본 스냅샷" />
+                                <div class="image-tag">RAW</div>
+                            </div>
+                            <div class="image-cell" data-cell="annotated">
+                                <img id="analysisImage" alt="분석 결과" />
+                                <div class="image-tag analysis">ANNOTATED</div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <!-- Events archive -->
+            <section id="eventsSection" class="panel">
+                <div class="panel-head">
+                    <div>
+                        <div class="card-title">이벤트 아카이브</div>
+                        <div class="card-sub" id="resultPath">감지 결과는 results/events 폴더에 저장됩니다.</div>
+                    </div>
+                    <div class="card-tags">
+                        <button id="openEventFolderBtn" class="btn-ghost" style="padding:5px 11px; font-size:11px;" disabled>저장 폴더 열기</button>
+                    </div>
+                </div>
+                <div id="recentEvents" class="events-grid">
+                    <div class="empty">아직 저장된 이벤트가 없습니다.</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Image preview modal -->
+    <div id="imageModal" class="modal">
+        <div class="modal-card image-modal-card">
+            <div class="modal-head">
+                <div class="modal-title">이미지 확대 보기</div>
+                <div class="modal-head-actions">
+                    <span id="modalCounter" class="modal-counter"></span>
+                    <button id="zoomOutBtn" class="btn-ghost" style="padding:4px 10px;" title="축소 (휠 아래로)">−</button>
+                    <button id="zoomResetBtn" class="btn-ghost" style="padding:4px 10px;" title="원래 크기로">100%</button>
+                    <button id="zoomInBtn" class="btn-ghost" style="padding:4px 10px;" title="확대 (휠 위로)">+</button>
+                    <button id="closeModalBtn" class="btn-ghost" style="padding:4px 10px;">닫기</button>
+                </div>
+            </div>
+            <div id="modalStage" class="modal-stage">
+                <button id="prevImgBtn" class="nav-arrow prev" title="이전 (←)" aria-label="이전">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <img id="modalImage" class="modal-image" alt="확대 이미지" draggable="false" />
+                <button id="nextImgBtn" class="nav-arrow next" title="다음 (→)" aria-label="다음">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+            <div id="modalCaption" class="modal-caption"></div>
+        </div>
+    </div>
+
+    <!-- Settings modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-card settings-card">
+            <div class="modal-head">
+                <div>
+                    <div class="modal-title">감지 / 분석 설정</div>
+                    <div class="modal-caption" style="margin-top:4px; padding:0; border:0;" id="settingsDeviceNote">실행 디바이스: —</div>
+                </div>
+                <button id="settingsCloseBtn" class="btn-ghost" style="padding:4px 12px;">닫기</button>
+            </div>
+
+            <div class="modal-body" id="settingsBody">
+                <div class="settings-group">
+                    <div class="settings-group-title">감지 민감도</div>
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">사람 최소 점수</div>
+                            <div class="setting-desc">이 신뢰도 미만의 사람 감지는 무시됩니다. 높일수록 오탐↓, 놓침↑.</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="range" id="setPersonScore" min="0" max="0.9" step="0.01" />
+                            <span class="setting-val" id="setPersonScoreVal">—</span>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">차량 최소 점수</div>
+                            <div class="setting-desc">이 신뢰도 미만의 차량 감지는 무시됩니다.</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="range" id="setVehicleScore" min="0" max="0.9" step="0.01" />
+                            <span class="setting-val" id="setVehicleScoreVal">—</span>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">모델 신뢰도 하한</div>
+                            <div class="setting-desc">탐지 모델이 후보를 출력하는 최저 임계값(바닥값). 보통 위 항목으로 조정합니다.</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="range" id="setModelConf" min="0.01" max="0.6" step="0.01" />
+                            <span class="setting-val" id="setModelConfVal">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">샘플링 / 분석</div>
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">스크린샷(분석) 간격</div>
+                            <div class="setting-desc">몇 초마다 한 장씩 캡처해 분석할지 정합니다. 다음 분석부터 기본값으로 적용됩니다.</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="number" id="setInterval" min="1" max="10" step="1" />
+                            <span class="setting-val">초</span>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">트랙 확정 후에만 알람</div>
+                            <div class="setting-desc">여러 프레임 연속 감지된 객체만 이벤트로 인정합니다. 깜빡이는 일시적 오탐 제거에 효과적.</div>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="setRequireConfirm" /><span class="slider"></span></label>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">의미 검증(VLM) / 이벤트</div>
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">VLM 의미 검증 사용</div>
+                            <div class="setting-desc">감지 박스를 의미 모델로 한 번 더 확인합니다. 끄면 빨라지지만 오탐이 늘 수 있습니다.</div>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="setVlmEnabled" /><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">VLM 엄격 모드</div>
+                            <div class="setting-desc">바위·그림자 등 오탐 후보(부정 프롬프트) 점수가 더 높으면 탈락시킵니다.</div>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="setVlmStrict" /><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">이벤트 자동 저장</div>
+                            <div class="setting-desc">사람/차량 감지 시 결과 이미지를 results/events 폴더에 저장합니다.</div>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="setEventEnabled" /><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">미리보기 이미지 품질</div>
+                            <div class="setting-desc">화면에 표시되는 JPEG 품질(40~100). 낮추면 전송이 가벼워집니다.</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="range" id="setJpegQuality" min="40" max="100" step="1" />
+                            <span class="setting-val" id="setJpegQualityVal">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">CPU 강제 옵션 (고급)</div>
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">CPU에서 SAHI(L2) 강제 사용</div>
+                            <div class="setting-desc">GPU가 없을 때는 SAHI 타일 분할이 자동으로 꺼집니다. 켜면 작은 객체 탐지가 좋아지지만 매우 느려집니다.</div>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="setCpuAllowSahi" /><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">CPU에서 VLM(L3) 강제 사용</div>
+                            <div class="setting-desc">GPU가 없을 때는 VLM 의미 검증이 자동으로 꺼집니다. 켜면 오탐이 줄지만 프레임당 수 초 이상 느려질 수 있습니다.</div>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="setCpuAllowVlm" /><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-desc" id="cpuForceNote">이 옵션은 실행 디바이스가 CPU일 때만 적용됩니다.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-foot">
+                <div class="foot-note" id="settingsFootNote">변경 즉시 실행 중인 분석에도 반영됩니다.</div>
+                <div class="foot-actions">
+                    <button id="settingsResetBtn" class="btn-ghost" style="padding:6px 13px;">되돌리기</button>
+                    <button id="settingsSaveBtn" class="btn-primary" style="padding:6px 15px;">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast stack -->
+    <div id="toastStack" class="toast-stack"></div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const path = require('path');
+
+        // ============ DOM refs ============
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const intervalRange = document.getElementById('intervalRange');
+        const intervalValue = document.getElementById('intervalValue');
+        const profileSelect = document.getElementById('profileSelect');
+        const selectedVideo = document.getElementById('selectedVideo');
+        const samplingMeta = document.getElementById('samplingMeta');
+        const profileMeta = document.getElementById('profileMeta');
+
+        const statusLine = document.getElementById('statusLine');
+        const riskSummary = document.getElementById('riskSummary');
+        const missionState = document.getElementById('missionState');
+        const streamInfo = document.getElementById('streamInfo');
+
+        const engineStatus = document.getElementById('engineStatus');
+        const deviceBadge = document.getElementById('deviceBadge');
+        const riskBadge = document.getElementById('riskBadge');
+
+        const liveVideo = document.getElementById('liveVideo');
+        const recDot = document.getElementById('recDot');
+        const hudRisk = document.getElementById('hudRisk');
+        const hudTime = document.getElementById('hudTime');
+        const hudCounts = document.getElementById('hudCounts');
+        const hudFps = document.getElementById('hudFps');
+        const frameTag = document.getElementById('frameTag');
+
+        const snapshotImage = document.getElementById('snapshotImage');
+        const analysisImage = document.getElementById('analysisImage');
+        const snapshotTimestamp = document.getElementById('snapshotTimestamp');
+        const imagePair = document.getElementById('imagePair');
+        const snapshotTabs = document.getElementById('snapshotTabs');
+
+        const currentPersons = document.getElementById('currentPersons');
+        const currentVehicles = document.getElementById('currentVehicles');
+        const streamFps = document.getElementById('streamFps');
+        const inferenceFps = document.getElementById('inferenceFps');
+        const snapshotCount = document.getElementById('snapshotCount');
+        const analysisCount = document.getElementById('analysisCount');
+        const eventCount = document.getElementById('eventCount');
+        const navEventsCount = document.getElementById('navEventsCount');
+
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const progressPercent = document.getElementById('progressPercent');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const loadImageBtn = document.getElementById('loadImageBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressKnob = document.getElementById('progressKnob');
+        let isPaused = false;     // user paused the manual-video analysis
+        let isSeeking = false;    // user is dragging the scrubber
+        const resultPath = document.getElementById('resultPath');
+        const recentEvents = document.getElementById('recentEvents');
+        const openEventFolderBtn = document.getElementById('openEventFolderBtn');
+
+        const imageModal = document.getElementById('imageModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const modalImage = document.getElementById('modalImage');
+        const modalCaption = document.getElementById('modalCaption');
+        const modalStage = document.getElementById('modalStage');
+        const modalCounter = document.getElementById('modalCounter');
+        const prevImgBtn = document.getElementById('prevImgBtn');
+        const nextImgBtn = document.getElementById('nextImgBtn');
+        const zoomInBtn = document.getElementById('zoomInBtn');
+        const zoomOutBtn = document.getElementById('zoomOutBtn');
+        const zoomResetBtn = document.getElementById('zoomResetBtn');
+        // Gallery + zoom/pan state for the image preview modal.
+        let galleryItems = [];   // [{ src, caption }]
+        let galleryIndex = 0;
+        let zoomScale = 1, zoomTx = 0, zoomTy = 0;
+        const toastStack = document.getElementById('toastStack');
+
+        const modeToggle = document.getElementById('modeToggle');
+        const runModeTag = document.getElementById('runModeTag');
+        const streamRow = document.getElementById('streamRow');
+        const streamUrlInput = document.getElementById('streamUrlInput');
+        const streamStatusDot = document.getElementById('streamStatusDot');
+        const liveStreamImg = document.getElementById('liveStreamImg');
+        const watchRow = document.getElementById('watchRow');
+        const watchStatusDot = document.getElementById('watchStatusDot');
+        const watchFolderPath = document.getElementById('watchFolderPath');
+        const selectFolderBtn = document.getElementById('selectFolderBtn');
+        const queueBadge = document.getElementById('queueBadge');
+        const lastDetected = document.getElementById('lastDetected');
+
+        // ============ State ============
+        let pollTimer = null;
+        let isProcessing = false;
+        let latestState = null;
+        let lastRiskLevel = 'clear';
+        let lastEventSignature = '';
+
+        // Auto-watch state
+        let runMode = 'manual';
+        let liveIsStream = false;
+        let watchFolder = null;
+        const pendingQueue = [];
+        const processedSet = new Set();
+        const SETTINGS_KEY = 'aerosentinel.settings.v1';
+
+        // ============ Helpers ============
+        function formatNumber(value, digits = 0) {
+            const n = Number.isFinite(Number(value)) ? Number(value) : 0;
+            return n.toFixed(digits);
+        }
+
+        function toFileUrl(filePath) {
+            return encodeURI(`file:///${String(filePath).replace(/\\/g, '/')}`);
+        }
+
+        function escapeHtml(text) {
+            return String(text ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function basename(p) {
+            if (!p) return '';
+            const parts = String(p).replace(/\\/g, '/').split('/');
+            return parts[parts.length - 1] || p;
+        }
+
+        function riskClass(level) {
+            const lv = String(level || 'clear').toLowerCase();
+            if (lv === 'critical') return 'risk-critical';
+            if (lv === 'warning') return 'risk-warning';
+            if (lv === 'notice') return 'risk-notice';
+            return 'risk-clear';
+        }
+
+        function riskKor(level) {
+            const map = { clear: '안전', notice: '주의', warning: '경고', critical: '위급' };
+            return map[String(level || 'clear').toLowerCase()] || '안전';
+        }
+
+        function setRisk(level) {
+            const klass = riskClass(level);
+            riskBadge.className = `risk-badge ${klass}`;
+            riskBadge.textContent = String(level || 'clear').toUpperCase();
+            hudRisk.className = `hud-risk-banner ${klass}`;
+            hudRisk.textContent = String(level || 'clear').toUpperCase();
+
+            if (level && level !== lastRiskLevel && level !== 'clear' && isProcessing) {
+                pushToast(level);
+            }
+            lastRiskLevel = level || 'clear';
+        }
+
+        function setMissionState(text, klass) {
+            missionState.className = `mission-state ${klass}`;
+            missionState.innerHTML = `<span class="led ${klass === 'active' ? 'on' : ''}"></span>${escapeHtml(text)}`;
+        }
+
+        function setEngineLed(state) {
+            const led = engineStatus.querySelector('.led');
+            if (!led) return;
+            led.className = 'led';
+            engineStatus.classList.remove('ready', 'error');
+            if (state === 'ready') {
+                led.classList.add('on');
+                engineStatus.classList.add('ready');
+                engineStatus.innerHTML = '<span class="led on"></span>Engine · Ready';
+            } else if (state === 'error') {
+                led.classList.add('err');
+                engineStatus.classList.add('error');
+                engineStatus.innerHTML = '<span class="led err"></span>Engine · Error';
+            } else {
+                engineStatus.innerHTML = '<span class="led"></span>Engine · Init';
+            }
+        }
+
+        function summarizeLayers(layers) {
+            // L1 always runs; L2~L5 map to sahi/vlm/tracker/active_learning.
+            if (!layers || !Object.keys(layers).length) return '';
+            const active = ['L1'];
+            if (layers.sahi) active.push('L2');
+            if (layers.vlm) active.push('L3');
+            if (layers.tracker) active.push('L4');
+            if (layers.active_learning) active.push('L5');
+            return active.length === 1 ? 'L1 only' : active.join('·');
+        }
+
+        function setEngineReady(ready, response = null) {
+            setEngineLed(ready ? 'ready' : 'init');
+            // Respect the current mode (photo/auto keep the analyze button off)
+            // instead of unconditionally re-enabling it on every status poll.
+            updateAnalyzeButton();
+
+            if (response) {
+                const dev = String(response.device || '—').toUpperCase();
+                const layerInfo = summarizeLayers(response.layers);
+                deviceBadge.textContent = layerInfo
+                    ? `Device · ${dev} · ${layerInfo}`
+                    : `Device · ${dev}`;
+                deviceBadge.title = dev === 'CPU'
+                    ? 'CPU 모드 — 무거운 레이어(L2 SAHI / L3 VLM)는 기본 비활성화됩니다. 설정에서 강제로 켤 수 있습니다.'
+                    : 'GPU(CUDA) 모드 — 전체 레이어 사용 가능';
+            }
+        }
+
+        // ============ Polling ============
+        function startPolling() {
+            stopPolling();
+            pollTimer = setInterval(refreshVideoStatus, 250);
+        }
+
+        function stopPolling() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        }
+
+        // ============ Reset ============
+        function setViewerMedia(active) {
+            const stage = liveVideo.closest('.viewer-stage');
+            if (stage) stage.classList.toggle('has-media', !!active);
+        }
+
+        function resetLiveVideo() {
+            try { liveVideo.pause(); } catch (_) {}
+            liveVideo.removeAttribute('src');
+            liveVideo.load();
+            liveVideo.style.display = 'block';
+            liveStreamImg.removeAttribute('src');
+            liveStreamImg.style.display = 'none';
+            liveIsStream = false;
+            setViewerMedia(false);
+        }
+
+        function resetAnalysisUI() {
+            resetLiveVideo();
+            latestState = null;
+            lastRiskLevel = 'clear';
+            lastEventSignature = '';
+
+            if (selectedVideo) selectedVideo.textContent = '없음';
+            if (samplingMeta) samplingMeta.textContent = `${intervalRange.value}초`;
+            if (profileMeta) profileMeta.textContent = profileSelect.value;
+            streamInfo.textContent = 'stream idle';
+            setMissionState('대기 중', 'idle');
+            recDot.classList.add('idle');
+
+            riskSummary.textContent = '현재 감지된 사람이나 차량이 없습니다.';
+            setRisk('clear');
+
+            snapshotImage.removeAttribute('src');
+            analysisImage.removeAttribute('src');
+            imagePair.classList.remove('is-waiting');
+            snapshotTimestamp.textContent = '아직 캡처된 스냅샷이 없습니다.';
+
+            currentPersons.textContent = '0';
+            currentVehicles.textContent = '0';
+            streamFps.textContent = '0.0';
+            inferenceFps.textContent = '0.0';
+            snapshotCount.textContent = '0';
+            analysisCount.textContent = '0';
+            eventCount.textContent = '0';
+            navEventsCount.textContent = '0';
+
+            hudTime.textContent = '0.0s';
+            hudCounts.textContent = '사람 0 · 차량 0';
+            hudFps.textContent = '0.0 fps';
+            frameTag.textContent = 'frame · 0 / 0';
+
+            progressFill.style.width = '0%';
+            progressKnob.style.left = '0%';
+            progressPercent.textContent = '0%';
+            progressText.textContent = '대기 중';
+            isPaused = false;
+            isSeeking = false;
+            setPauseButton(false);
+            enablePlaybackControls(false);
+
+            recentEvents.innerHTML = '<div class="empty">아직 저장된 이벤트가 없습니다.</div>';
+            resultPath.textContent = '감지 결과는 results/events 폴더에 저장됩니다.';
+
+            openEventFolderBtn.disabled = true;
+        }
+
+        // ============ Toast ============
+        function pushToast(level) {
+            const titles = {
+                notice: '주의 단계 감지',
+                warning: '경고 단계 감지',
+                critical: '위급 상황 감지',
+            };
+            const klass = String(level).toLowerCase();
+            const node = document.createElement('div');
+            node.className = `toast ${klass}`;
+            node.innerHTML = `
+                <div class="toast-bar"></div>
+                <div>
+                    <div class="toast-title">${escapeHtml(titles[klass] || '감지 이벤트')}</div>
+                    <div class="toast-body">화면 우측 패널과 이벤트 아카이브에서 상세 정보를 확인하세요.</div>
+                </div>
+            `;
+            toastStack.appendChild(node);
+            setTimeout(() => {
+                node.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                node.style.opacity = '0';
+                node.style.transform = 'translateX(20px)';
+                setTimeout(() => node.remove(), 400);
+            }, 4500);
+        }
+
+        // ============ Renderers ============
+        function resolveEventDirectory(state) {
+            if (!state) return '';
+            if (state.event_directory) return state.event_directory;
+            if (state.latest_event_path) return path.dirname(state.latest_event_path);
+            const lp = state.latest_result && state.latest_result.image_path;
+            return lp ? path.dirname(lp) : '';
+        }
+
+        function renderRecentEvents(events) {
+            if (!events || events.length === 0) {
+                recentEvents.innerHTML = '<div class="empty">아직 저장된 이벤트가 없습니다.</div>';
+                return;
+            }
+
+            recentEvents.innerHTML = events.map((event, idx) => {
+                const level = String(event.risk_level || 'clear').toLowerCase();
+                const klass = riskClass(level);
+                const img = event.path
+                    ? `<img class="event-thumb" data-caption="${escapeHtml(`${event.timestamp || '-'} / ${event.path || ''}`)}" src="${toFileUrl(event.path)}?t=${encodeURIComponent(event.frame_index || idx)}" alt="event-${idx}">`
+                    : '';
+                const labels = Array.isArray(event.labels) && event.labels.length
+                    ? escapeHtml(event.labels.join(', '))
+                    : 'person / vehicle';
+                return `
+                    <div class="event-card">
+                        ${img}
+                        <div class="event-card-body">
+                            <div class="event-card-head">
+                                <span class="event-risk ${klass}">${escapeHtml(String(event.risk_level || 'clear').toUpperCase())}</span>
+                                <span class="event-frame">frame ${Number(event.frame_index || 0)}</span>
+                            </div>
+                            <div class="event-info">
+                                <b>사람</b> ${Number(event.persons || 0)} · <b>차량</b> ${Number(event.vehicles || 0)}<br>
+                                ${escapeHtml(event.timestamp || '-')}<br>
+                                ${labels}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Build a gallery from all event thumbnails so the modal can step
+            // through them with the prev/next arrows.
+            const thumbs = [...recentEvents.querySelectorAll('img[data-caption]')];
+            thumbs.forEach((img, i) => {
+                img.addEventListener('click', () => {
+                    const items = thumbs.map((el) => ({ src: el.src, caption: el.dataset.caption || '' }));
+                    openGallery(items, i);
+                });
+            });
+        }
+
+        // ============ Status loop ============
+        function setEngineBanner(message) {
+            const banner = document.getElementById('engineBanner');
+            if (!banner) return;
+            if (message) {
+                document.getElementById('engineBannerText').textContent = message;
+                banner.classList.add('show');
+            } else {
+                banner.classList.remove('show');
+            }
+        }
+
+        // ---- Engine-preparation progress bar ----
+        // The engine gives no real load-progress signal, so we ease the bar
+        // toward a 92% cap while the model loads (~20s on CPU; longer on the
+        // very first run while weights download) and snap it to 100% the moment
+        // model_loaded flips true.
+        let enginePrepActive = false;
+        let enginePrepTimer = null;
+        let enginePrepValue = 0;
+        const enginePrepEl = document.getElementById('enginePrep');
+        const enginePrepFillEl = document.getElementById('enginePrepFill');
+        const enginePrepPctEl = document.getElementById('enginePrepPct');
+
+        function renderEnginePrep() {
+            const v = Math.max(0, Math.min(100, enginePrepValue));
+            if (enginePrepFillEl) enginePrepFillEl.style.width = `${v}%`;
+            if (enginePrepPctEl) enginePrepPctEl.textContent = `${Math.round(v)}%`;
+        }
+
+        function startEnginePrep() {
+            if (enginePrepActive) return;   // already running — don't reset progress
+            enginePrepActive = true;
+            enginePrepValue = 6;
+            if (enginePrepEl) enginePrepEl.classList.add('show');
+            renderEnginePrep();
+            enginePrepTimer = setInterval(() => {
+                enginePrepValue += (92 - enginePrepValue) * 0.045;
+                renderEnginePrep();
+            }, 200);
+        }
+
+        function completeEnginePrep() {
+            if (enginePrepTimer) { clearInterval(enginePrepTimer); enginePrepTimer = null; }
+            if (!enginePrepActive) {
+                if (enginePrepEl) enginePrepEl.classList.remove('show');
+                return;
+            }
+            enginePrepActive = false;
+            enginePrepValue = 100;
+            renderEnginePrep();
+            setTimeout(() => { if (enginePrepEl) enginePrepEl.classList.remove('show'); }, 450);
+        }
+
+        function hideEnginePrep() {
+            if (enginePrepTimer) { clearInterval(enginePrepTimer); enginePrepTimer = null; }
+            enginePrepActive = false;
+            if (enginePrepEl) enginePrepEl.classList.remove('show');
+        }
+
+        async function checkModelStatus() {
+            const response = await ipcRenderer.invoke('check-engine-status');
+
+            if (response && response.status === 'error') {
+                setEngineLed('error');
+                hideEnginePrep();
+                setEngineBanner(`AI 엔진에 연결할 수 없습니다: ${response.msg || '엔진 응답 없음'}`);
+                statusLine.textContent = 'AI 엔진 연결 오류 — 엔진 상태를 확인해 주세요.';
+                return;
+            }
+
+            setEngineBanner(null);
+            if (response.model_loaded) {
+                completeEnginePrep();
+                setEngineReady(true, response);
+                if (!isProcessing) {
+                    statusLine.textContent = '모델 준비가 완료되었습니다. 드론 영상을 선택해 주세요.';
+                }
+            } else {
+                startEnginePrep();
+                setEngineReady(false, response);
+                statusLine.textContent = '아직 모델을 로딩 중입니다.';
+            }
+        }
+
+        async function refreshVideoStatus() {
+            const state = await ipcRenderer.invoke('get-video-analysis-status');
+            if (!state || state.status === 'error') return;
+
+            latestState = state;
+            openEventFolderBtn.disabled = !resolveEventDirectory(state);
+
+            const persons = Number(state.current_persons || 0);
+            const vehicles = Number(state.current_vehicle_like_objects || 0);
+            currentPersons.textContent = persons;
+            currentVehicles.textContent = vehicles;
+            streamFps.textContent = formatNumber(state.stream_fps, 1);
+            inferenceFps.textContent = formatNumber(state.inference_fps, 1);
+            snapshotCount.textContent = formatNumber(state.snapshot_count);
+            analysisCount.textContent = formatNumber(state.analysis_count);
+            eventCount.textContent = formatNumber(state.event_count);
+            navEventsCount.textContent = formatNumber(state.event_count);
+
+            hudCounts.textContent = `사람 ${persons} · 차량 ${vehicles}`;
+            hudTime.textContent = `${formatNumber(state.current_video_time, 1)}s`;
+            hudFps.textContent = `${formatNumber(state.inference_fps, 1)} fps`;
+            frameTag.textContent = `frame · ${formatNumber(state.processed_frames)} / ${formatNumber(state.total_frames)}`;
+
+            streamInfo.textContent = `stream ${formatNumber(state.source_fps, 1)} fps · sample ${formatNumber(state.analysis_interval_seconds, 0)}s`;
+            if (samplingMeta) samplingMeta.textContent = `${formatNumber(state.analysis_interval_seconds, 0)}초`;
+            riskSummary.textContent = state.risk_summary || '현재 감지된 사람이나 차량이 없습니다.';
+
+            setRisk(state.risk_level || 'clear');
+
+            const progress = Math.max(0, Math.min(100, Number(state.progress || 0)));
+            // Don't fight the user while they're scrubbing the bar.
+            if (!isSeeking) {
+                progressFill.style.width = `${progress}%`;
+                progressKnob.style.left = `${progress}%`;
+                progressPercent.textContent = `${formatNumber(progress)}%`;
+            }
+            // Keep the pause button in sync with the engine's paused state.
+            isPaused = !!state.paused;
+            setPauseButton(isPaused);
+            // Make the visible <video> element follow the engine paused state
+            // (file playback only) so pausing actually freezes the footage.
+            if (!liveIsStream) {
+                if (isPaused && !liveVideo.paused) {
+                    try { liveVideo.pause(); } catch (_) {}
+                } else if (!isPaused && liveVideo.paused && isProcessing) {
+                    try { liveVideo.play().catch(() => {}); } catch (_) {}
+                }
+            }
+
+            if (liveIsStream && state.live_frame_base64) {
+                liveStreamImg.src = `data:image/jpeg;base64,${state.live_frame_base64}`;
+            }
+            if (state.latest_snapshot_base64) {
+                snapshotImage.src = `data:image/jpeg;base64,${state.latest_snapshot_base64}`;
+                imagePair.classList.remove('is-waiting');
+            }
+            if (state.latest_result_base64) {
+                analysisImage.src = `data:image/jpeg;base64,${state.latest_result_base64}`;
+            }
+            if (state.latest_snapshot_timestamp) {
+                snapshotTimestamp.textContent = state.analysis_pending
+                    ? `${state.latest_snapshot_timestamp} · 분석 중`
+                    : state.latest_snapshot_timestamp;
+            }
+
+            renderRecentEvents(state.recent_events || []);
+
+            const eventDirectory = resolveEventDirectory(state);
+            if (state.latest_event_path) {
+                resultPath.textContent = `최근 이벤트: ${basename(state.latest_event_path)}`;
+            } else if (eventDirectory) {
+                resultPath.textContent = `저장 폴더: ${eventDirectory}`;
+            } else {
+                resultPath.textContent = '감지 결과는 results/events 폴더에 저장됩니다.';
+            }
+
+            if (state.status === 'processing') {
+                isProcessing = true;
+                analyzeBtn.disabled = true;
+                stopBtn.disabled = false;
+                recDot.classList.toggle('idle', isPaused);
+                if (isPaused) {
+                    progressText.textContent = '일시정지됨';
+                    setMissionState('일시정지됨', 'idle');
+                    statusLine.innerHTML = '일시정지 — 진행바를 드래그해 위치를 옮긴 뒤 재개할 수 있습니다.';
+                } else {
+                    progressText.textContent = '실시간 분석 중';
+                    setMissionState('실시간 분석 중', 'active');
+                    statusLine.innerHTML = (state.is_stream || liveIsStream)
+                        ? `실시간 스트림 수신 중 · <span class="accent">${formatNumber(state.analysis_interval_seconds || 0)}</span>초 간격 스냅샷 분석 수행 중.`
+                        : `원본 영상은 1배속 재생 중, <span class="accent">${formatNumber(state.analysis_interval_seconds || 0)}</span>초 간격 스냅샷 분석 수행 중.`;
+                }
+                return;
+            }
+
+            if (state.status === 'completed') {
+                // Manual file: the engine paused at the end and keeps the session
+                // alive, so stay interactive — the user can scrub back, resume,
+                // or capture. Keep polling and controls enabled.
+                if (!liveIsStream && runMode !== 'auto') {
+                    isProcessing = true;
+                    analyzeBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    enablePlaybackControls(true);
+                    recDot.classList.add('idle');
+                    progressText.textContent = '분석 완료 · 위치 이동/캡처 가능';
+                    setMissionState('분석 완료', 'completed');
+                    statusLine.innerHTML = `분석 완료 · 총 <span class="accent">${formatNumber(state.analysis_count || 0)}</span>회 · 진행바를 옮겨 재개하거나 캡처할 수 있습니다.`;
+                    return;
+                }
+                isProcessing = false;
+                updateAnalyzeButton();
+                stopBtn.disabled = true;
+                recDot.classList.add('idle');
+                progressText.textContent = '분석 완료';
+                setMissionState('분석 완료', 'completed');
+                statusLine.innerHTML = `분석 완료 · 총 <span class="accent">${formatNumber(state.analysis_count || 0)}</span>회 분석.`;
+                stopPolling();
+                if (runMode === 'auto') setTimeout(maybeProcessNextInQueue, 600);
+                return;
+            }
+
+            if (state.status === 'stopped') {
+                isProcessing = false;
+                analyzeBtn.disabled = false;
+                stopBtn.disabled = true;
+                recDot.classList.add('idle');
+                progressText.textContent = '중지됨';
+                setMissionState('중지됨', 'stopped');
+                statusLine.textContent = '사용자 요청으로 분석을 중지했습니다.';
+                stopPolling();
+                return;
+            }
+
+            if (state.status === 'error') {
+                isProcessing = false;
+                analyzeBtn.disabled = false;
+                stopBtn.disabled = true;
+                recDot.classList.add('idle');
+                progressText.textContent = '오류';
+                setMissionState('오류', 'stopped');
+                statusLine.textContent = `분석 중 오류: ${state.message || '알 수 없는 오류'}`;
+                stopPolling();
+            }
+        }
+
+        // ============ Modal ============
+        function applyZoomTransform() {
+            modalImage.style.transform = `translate(${zoomTx}px, ${zoomTy}px) scale(${zoomScale})`;
+            modalStage.classList.toggle('zoomed', zoomScale > 1.001);
+            zoomResetBtn.textContent = `${Math.round(zoomScale * 100)}%`;
+        }
+
+        function resetZoom() {
+            zoomScale = 1; zoomTx = 0; zoomTy = 0;
+            applyZoomTransform();
+        }
+
+        function setZoom(nextScale, originX, originY) {
+            const clamped = Math.max(1, Math.min(6, nextScale));
+            if (clamped === zoomScale) return;
+            if (originX != null) {
+                // Keep the point under the cursor stable while zooming.
+                const rect = modalStage.getBoundingClientRect();
+                const mx = originX - rect.left - rect.width / 2;
+                const my = originY - rect.top - rect.height / 2;
+                const ratio = clamped / zoomScale;
+                zoomTx = mx - (mx - zoomTx) * ratio;
+                zoomTy = my - (my - zoomTy) * ratio;
+            }
+            zoomScale = clamped;
+            if (zoomScale === 1) { zoomTx = 0; zoomTy = 0; }
+            applyZoomTransform();
+        }
+
+        function renderGalleryItem() {
+            const item = galleryItems[galleryIndex];
+            if (!item) return;
+            modalImage.src = item.src;
+            modalCaption.textContent = item.caption || '';
+            const multi = galleryItems.length > 1;
+            modalCounter.textContent = multi ? `${galleryIndex + 1} / ${galleryItems.length}` : '';
+            prevImgBtn.classList.toggle('hidden', !multi);
+            nextImgBtn.classList.toggle('hidden', !multi);
+            resetZoom();
+        }
+
+        function stepGallery(delta) {
+            if (galleryItems.length < 2) return;
+            galleryIndex = (galleryIndex + delta + galleryItems.length) % galleryItems.length;
+            renderGalleryItem();
+        }
+
+        // items: array of { src, caption }; opens at startIndex.
+        function openGallery(items, startIndex = 0) {
+            if (!items || !items.length) return;
+            galleryItems = items;
+            galleryIndex = Math.max(0, Math.min(startIndex, items.length - 1));
+            renderGalleryItem();
+            imageModal.classList.add('open');
+        }
+
+        // Single-image entry point (snapshot previews) — a 1-item gallery.
+        function openPreviewModal(src, caption) {
+            if (!src) return;
+            openGallery([{ src, caption: caption || '' }], 0);
+        }
+
+        function closePreviewModal() {
+            imageModal.classList.remove('open');
+            modalImage.removeAttribute('src');
+            modalCaption.textContent = '';
+            galleryItems = [];
+            resetZoom();
+        }
+
+        // ============ Settings modal ============
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+        const settingsResetBtn = document.getElementById('settingsResetBtn');
+        const settingsSaveBtn = document.getElementById('settingsSaveBtn');
+        const settingsFootNote = document.getElementById('settingsFootNote');
+        const settingsDeviceNote = document.getElementById('settingsDeviceNote');
+
+        const SETTINGS_RANGE_LABELS = {
+            setPersonScore: 'setPersonScoreVal',
+            setVehicleScore: 'setVehicleScoreVal',
+            setModelConf: 'setModelConfVal',
+            setJpegQuality: 'setJpegQualityVal',
+        };
+        let engineSettings = null;
+
+        function formatSettingVal(rangeId, value) {
+            return rangeId === 'setJpegQuality'
+                ? String(Math.round(Number(value)))
+                : Number(value).toFixed(2);
+        }
+
+        function bindSettingRangeLabels() {
+            Object.entries(SETTINGS_RANGE_LABELS).forEach(([rangeId, valId]) => {
+                const range = document.getElementById(rangeId);
+                const label = document.getElementById(valId);
+                range.addEventListener('input', () => {
+                    label.textContent = formatSettingVal(rangeId, range.value);
+                });
+            });
+        }
+
+        function fillSettingsForm(s) {
+            const setRange = (id, value) => {
+                document.getElementById(id).value = value;
+                document.getElementById(SETTINGS_RANGE_LABELS[id]).textContent = formatSettingVal(id, value);
+            };
+            setRange('setPersonScore', s.person_min_score);
+            setRange('setVehicleScore', s.vehicle_min_score);
+            setRange('setModelConf', s.model_confidence);
+            setRange('setJpegQuality', s.preview_jpeg_quality);
+
+            const interval = document.getElementById('setInterval');
+            interval.min = s.min_interval_seconds;
+            interval.max = s.max_interval_seconds;
+            interval.value = s.default_interval_seconds;
+
+            document.getElementById('setRequireConfirm').checked = !!s.require_confirmation_for_alarm;
+            document.getElementById('setVlmEnabled').checked = !!s.vlm_enabled;
+            document.getElementById('setVlmStrict').checked = !!s.vlm_strict;
+            document.getElementById('setEventEnabled').checked = !!s.event_enabled;
+
+            const cpuAllowSahi = document.getElementById('setCpuAllowSahi');
+            const cpuAllowVlm = document.getElementById('setCpuAllowVlm');
+            const cpuForceNote = document.getElementById('cpuForceNote');
+            cpuAllowSahi.checked = !!s.cpu_allow_sahi;
+            cpuAllowVlm.checked = !!s.cpu_allow_vlm;
+            // The override only has any effect on CPU — disable + explain on GPU.
+            const isCpu = String(s.device || '').toLowerCase() !== 'cuda';
+            cpuAllowSahi.disabled = !isCpu;
+            cpuAllowVlm.disabled = !isCpu;
+            cpuForceNote.textContent = isCpu
+                ? 'CPU 모드입니다. 켜면 다음 분석부터 해당 레이어가 동작합니다(느려짐 주의).'
+                : 'GPU(CUDA) 모드라 모든 레이어가 이미 동작 중입니다. 이 옵션은 CPU에서만 의미가 있습니다.';
+
+            settingsDeviceNote.textContent = `실행 디바이스: ${String(s.device || '—').toUpperCase()}`;
+        }
+
+        function gatherSettingsForm() {
+            return {
+                person_min_score: Number(document.getElementById('setPersonScore').value),
+                vehicle_min_score: Number(document.getElementById('setVehicleScore').value),
+                model_confidence: Number(document.getElementById('setModelConf').value),
+                default_interval_seconds: Number(document.getElementById('setInterval').value),
+                require_confirmation_for_alarm: document.getElementById('setRequireConfirm').checked,
+                vlm_enabled: document.getElementById('setVlmEnabled').checked,
+                vlm_strict: document.getElementById('setVlmStrict').checked,
+                event_enabled: document.getElementById('setEventEnabled').checked,
+                preview_jpeg_quality: Number(document.getElementById('setJpegQuality').value),
+                cpu_allow_sahi: document.getElementById('setCpuAllowSahi').checked,
+                cpu_allow_vlm: document.getElementById('setCpuAllowVlm').checked,
+            };
+        }
+
+        async function openSettingsModal() {
+            const res = await ipcRenderer.invoke('get-engine-settings');
+            if (!res || res.status !== 'ok' || !res.settings) {
+                statusLine.textContent = `설정을 불러오지 못했습니다: ${res && res.msg ? res.msg : '엔진 응답 없음'}`;
+                return;
+            }
+            engineSettings = res.settings;
+            fillSettingsForm(engineSettings);
+            settingsFootNote.textContent = '변경 즉시 실행 중인 분석에도 반영됩니다.';
+            settingsModal.classList.add('open');
+        }
+
+        function closeSettingsModal() {
+            settingsModal.classList.remove('open');
+        }
+
+        async function saveSettingsModal() {
+            const payload = gatherSettingsForm();
+            const prevText = settingsSaveBtn.textContent;
+            settingsSaveBtn.disabled = true;
+            settingsSaveBtn.textContent = '저장 중…';
+
+            const res = await ipcRenderer.invoke('save-engine-settings', payload);
+
+            settingsSaveBtn.disabled = false;
+            settingsSaveBtn.textContent = prevText;
+
+            if (!res || res.status !== 'ok' || !res.settings) {
+                settingsFootNote.textContent = `저장 실패: ${res && res.msg ? res.msg : '엔진 오류'}`;
+                return;
+            }
+
+            engineSettings = res.settings;
+            // Keep the mission-bar interval slider in sync with the saved default.
+            const iv = Number(res.settings.default_interval_seconds);
+            if (!Number.isNaN(iv)) {
+                intervalRange.value = iv;
+                intervalValue.textContent = `${iv}s`;
+                if (!isProcessing && samplingMeta) samplingMeta.textContent = `${iv}초`;
+                saveSettings();
+            }
+            closeSettingsModal();
+            statusLine.textContent = '설정을 저장했습니다. (즉시 적용 · 다음 분석부터 간격 반영)';
+        }
+
+        // ============ Snapshot tab ============
+        function setSnapshotView(view) {
+            snapshotTabs.querySelectorAll('.tab').forEach((b) => {
+                b.classList.toggle('active', b.dataset.view === view);
+            });
+            const rawCell = imagePair.querySelector('[data-cell="raw"]');
+            const annCell = imagePair.querySelector('[data-cell="annotated"]');
+            imagePair.classList.toggle('split', view === 'split');
+            if (view === 'raw') {
+                rawCell.classList.remove('hidden');
+                annCell.classList.add('hidden');
+            } else if (view === 'annotated') {
+                rawCell.classList.add('hidden');
+                annCell.classList.remove('hidden');
+            } else {
+                rawCell.classList.remove('hidden');
+                annCell.classList.remove('hidden');
+            }
+        }
+
+        // ============ Settings + Auto Mode ============
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem(SETTINGS_KEY);
+                if (!raw) return;
+                const s = JSON.parse(raw);
+                runMode = ['auto', 'stream'].includes(s.mode) ? s.mode : 'manual';
+                watchFolder = s.watchFolder || null;
+                if (s.streamUrl) streamUrlInput.value = s.streamUrl;
+                if (Array.isArray(s.processed)) {
+                    s.processed.forEach((p) => processedSet.add(p));
+                }
+            } catch (_) {}
+        }
+
+        function saveSettings() {
+            try {
+                const data = {
+                    mode: runMode,
+                    watchFolder,
+                    streamUrl: streamUrlInput.value.trim(),
+                    processed: [...processedSet].slice(-300),
+                };
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+            } catch (_) {}
+        }
+
+        function updateWatchFolderUI() {
+            if (watchFolder) {
+                watchFolderPath.textContent = watchFolder;
+                watchFolderPath.classList.remove('empty');
+                watchStatusDot.classList.add('on');
+            } else {
+                watchFolderPath.textContent = '선택되지 않음';
+                watchFolderPath.classList.add('empty');
+                watchStatusDot.classList.remove('on');
+            }
+        }
+
+        function updateQueueBadge() {
+            queueBadge.textContent = `대기열 ${pendingQueue.length}`;
+            queueBadge.classList.toggle('has-items', pendingQueue.length > 0);
+        }
+
+        function updateAnalyzeButton() {
+            if (runMode === 'photo') {
+                analyzeBtn.disabled = true;
+                analyzeBtn.title = '사진 분석 모드 — 캡처 스냅샷의 "불러오기"로 이미지를 분석합니다';
+            } else if (runMode === 'auto') {
+                analyzeBtn.disabled = true;
+                analyzeBtn.title = '자동 모드 — 폴더에 새 영상이 들어오면 자동으로 분석됩니다';
+            } else if (runMode === 'stream') {
+                analyzeBtn.disabled = isProcessing || !engineStatus.classList.contains('ready');
+                analyzeBtn.title = '스트림 모드 — 스트리밍 주소를 입력한 뒤 분석을 시작합니다';
+            } else {
+                analyzeBtn.disabled = isProcessing || !engineStatus.classList.contains('ready');
+                analyzeBtn.title = '';
+            }
+        }
+
+        async function applyMode(initial = false) {
+            modeToggle.querySelectorAll('.mode-opt').forEach((b) => {
+                b.classList.toggle('active', b.dataset.mode === runMode);
+            });
+            const modeTagMap = { photo: '사진 분석', auto: '자동 모드', stream: '스트림 모드', manual: '수동 모드' };
+            runModeTag.textContent = modeTagMap[runMode] || '수동 모드';
+            // The "불러오기" button only exists in photo mode.
+            loadImageBtn.style.display = runMode === 'photo' ? 'inline-flex' : 'none';
+
+            if (runMode === 'photo') {
+                // Entering photo mode fully resets like a stop.
+                streamRow.classList.remove('show');
+                watchRow.classList.remove('show');
+                await ipcRenderer.invoke('stop-folder-watch');
+                await ipcRenderer.invoke('stop-video-analysis');
+                pendingQueue.length = 0;
+                updateQueueBadge();
+                isProcessing = false;
+                stopPolling();
+                resetAnalysisUI();
+                stopBtn.disabled = true;
+                setMissionState('사진 분석 대기', 'idle');
+                if (!initial) {
+                    statusLine.textContent = '사진 분석 모드 — 캡처 스냅샷의 "불러오기"로 이미지를 선택하면 즉시 분석합니다.';
+                }
+                updateAnalyzeButton();
+                return;
+            }
+
+            if (runMode === 'stream') {
+                watchRow.classList.remove('show');
+                streamRow.classList.add('show');
+                await ipcRenderer.invoke('stop-folder-watch');
+                pendingQueue.length = 0;
+                updateQueueBadge();
+                streamStatusDot.classList.toggle('on', !!streamUrlInput.value.trim());
+                if (!initial) {
+                    statusLine.textContent = '스트림 모드 — 스트리밍 주소를 입력하고 분석 시작을 누르세요.';
+                }
+                updateAnalyzeButton();
+                return;
+            }
+
+            streamRow.classList.remove('show');
+
+            if (runMode === 'auto') {
+                watchRow.classList.add('show');
+                updateWatchFolderUI();
+                if (watchFolder) {
+                    const response = await ipcRenderer.invoke('start-folder-watch', watchFolder);
+                    if (response.status === 'ok') {
+                        const existing = response.existing_count || 0;
+                        const newCandidates = existing - [...processedSet].filter((p) => p.startsWith(watchFolder)).length;
+                        statusLine.innerHTML = `자동 감시 ${initial ? '복원' : '시작'} — <span class="accent">${escapeHtml(watchFolder)}</span> · 폴더 내 ${existing}개 중 미처리 후보 ${Math.max(0, newCandidates)}개`;
+                    } else {
+                        statusLine.textContent = `감시 시작 실패: ${response.msg || '알 수 없는 오류'}`;
+                    }
+                } else if (!initial) {
+                    statusLine.textContent = '자동 모드 — 먼저 감시할 폴더를 선택해 주세요.';
+                }
+            } else {
+                watchRow.classList.remove('show');
+                await ipcRenderer.invoke('stop-folder-watch');
+                pendingQueue.length = 0;
+                updateQueueBadge();
+                if (!initial) {
+                    statusLine.textContent = '수동 모드 — 분석 시작 버튼으로 영상을 직접 선택하세요.';
+                }
+            }
+            updateAnalyzeButton();
+        }
+
+        function beginAnalysisUI(response, source) {
+            const isStream = source === 'stream';
+            if (selectedVideo) selectedVideo.textContent = isStream
+                ? (response.selected_path || '스트림')
+                : basename(response.selected_path);
+            if (samplingMeta) samplingMeta.textContent = `${response.analysis_interval_seconds || intervalRange.value}초`;
+            if (profileMeta) profileMeta.textContent = response.analysis_profile || profileSelect.value;
+
+            resetLiveVideo();
+            if (isStream) {
+                // RTSP/UDP/etc. can't be opened by the <video> element, so the
+                // Python engine decodes the stream and pushes live JPEG frames
+                // that we render into this <img> on each status poll.
+                liveIsStream = true;
+                liveVideo.style.display = 'none';
+                liveStreamImg.style.display = 'block';
+            } else {
+                liveVideo.src = toFileUrl(response.selected_path);
+                liveVideo.currentTime = 0;
+                liveVideo.playbackRate = 1;
+                liveVideo.play().catch(() => {});
+            }
+            setViewerMedia(true);
+            imagePair.classList.add('is-waiting');
+            isPaused = false;
+            setPauseButton(false);
+            enablePlaybackControls(true);
+
+            snapshotImage.removeAttribute('src');
+            analysisImage.removeAttribute('src');
+            recentEvents.innerHTML = '<div class="empty">이벤트 대기 중...</div>';
+            snapshotTimestamp.textContent = '첫 스냅샷을 기다리는 중입니다.';
+            resultPath.textContent = '감지 결과는 results/events 폴더에 저장됩니다.';
+
+            isProcessing = true;
+            analyzeBtn.disabled = true;
+            stopBtn.disabled = false;
+            recDot.classList.remove('idle');
+            setMissionState(source === 'auto' ? '자동 분석 중' : '실시간 분석 중', 'active');
+            if (source === 'auto') {
+                statusLine.innerHTML = `자동 분석 시작 — <span class="accent">${escapeHtml(basename(response.selected_path))}</span>`;
+            } else if (isStream) {
+                statusLine.innerHTML = `스트림 연결 중 — <span class="accent">${escapeHtml(response.selected_path || '')}</span> · 실시간 영상과 함께 분석을 시작합니다.`;
+            } else {
+                statusLine.textContent = '원본 영상 재생과 함께 스냅샷 분석을 시작합니다.';
+            }
+            progressText.textContent = '분석 시작';
+            startPolling();
+        }
+
+        async function maybeProcessNextInQueue() {
+            if (runMode !== 'auto') return;
+            if (isProcessing) return;
+            if (pendingQueue.length === 0) return;
+            if (!engineStatus.classList.contains('ready')) return;
+
+            const next = pendingQueue.shift();
+            updateQueueBadge();
+
+            const response = await ipcRenderer.invoke('start-video-from-path', {
+                video_path: next,
+                analysis_interval_seconds: Number(intervalRange.value),
+                analysis_profile: profileSelect.value,
+            });
+
+            if (!response || response.status !== 'accepted') {
+                statusLine.textContent = `자동 분석 실패 (${basename(next)}): ${response?.msg || '알 수 없는 오류'}`;
+                setTimeout(maybeProcessNextInQueue, 800);
+                return;
+            }
+
+            processedSet.add(next);
+            saveSettings();
+            beginAnalysisUI(response, 'auto');
+        }
+
+        // ============ Events ============
+        ipcRenderer.on('engine-ready', () => {
+            setEngineLed('ready');
+            statusLine.textContent = '엔진 준비가 완료되었습니다. 드론 영상을 선택해 주세요.';
+            // If auto mode + queued items waiting, kick off
+            if (runMode === 'auto') maybeProcessNextInQueue();
+        });
+
+        ipcRenderer.on('engine-crashed', (_, payload) => {
+            // Backward-compatible: payload may be a bare exit code or {code, detail}.
+            const code = (payload && typeof payload === 'object') ? payload.code : payload;
+            const detail = (payload && typeof payload === 'object') ? payload.detail : '';
+            setEngineLed('error');
+            hideEnginePrep();
+            analyzeBtn.disabled = true;
+            stopBtn.disabled = true;
+            const reason = detail ? ` — ${detail}` : '';
+            statusLine.textContent = `Python 엔진이 종료되었습니다. 코드: ${code}${reason}`;
+            setEngineBanner(detail
+                ? `AI 엔진이 종료되었습니다: ${detail}`
+                : 'AI 엔진이 예기치 않게 종료되었습니다. 앱을 재시작해 주세요.');
+            stopPolling();
+        });
+
+        ipcRenderer.on('watched-file-ready', (_, info) => {
+            if (runMode !== 'auto') return;
+            if (!info || !info.path) return;
+            if (processedSet.has(info.path)) return;
+            if (pendingQueue.includes(info.path)) return;
+
+            pendingQueue.push(info.path);
+            updateQueueBadge();
+            lastDetected.textContent = `최근 감지: ${basename(info.path)}`;
+            lastDetected.title = info.path;
+
+            pushAutoToast(info.path);
+            maybeProcessNextInQueue();
+        });
+
+        function pushAutoToast(filePath) {
+            const node = document.createElement('div');
+            node.className = 'toast';
+            node.innerHTML = `
+                <div class="toast-bar" style="background: var(--accent)"></div>
+                <div>
+                    <div class="toast-title">새 영상 감지</div>
+                    <div class="toast-body">${escapeHtml(basename(filePath))}<br>자동 분석 큐에 추가했습니다.</div>
+                </div>
+            `;
+            toastStack.appendChild(node);
+            setTimeout(() => {
+                node.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                node.style.opacity = '0';
+                node.style.transform = 'translateX(20px)';
+                setTimeout(() => node.remove(), 400);
+            }, 3800);
+        }
+
+        modeToggle.addEventListener('click', (e) => {
+            const btn = e.target.closest('.mode-opt');
+            if (!btn) return;
+            const next = btn.dataset.mode;
+            if (next === runMode) return;
+            runMode = next;
+            saveSettings();
+            applyMode();
+        });
+
+        streamUrlInput.addEventListener('input', () => {
+            streamStatusDot.classList.toggle('on', !!streamUrlInput.value.trim());
+        });
+        streamUrlInput.addEventListener('change', saveSettings);
+        streamUrlInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !analyzeBtn.disabled) analyzeBtn.click();
+        });
+
+        selectFolderBtn.addEventListener('click', async () => {
+            const folder = await ipcRenderer.invoke('select-folder');
+            if (!folder) return;
+
+            if (watchFolder && watchFolder !== folder) {
+                await ipcRenderer.invoke('stop-folder-watch');
+                pendingQueue.length = 0;
+                updateQueueBadge();
+            }
+
+            watchFolder = folder;
+            saveSettings();
+            updateWatchFolderUI();
+
+            if (runMode === 'auto') {
+                const response = await ipcRenderer.invoke('start-folder-watch', folder);
+                if (response.status === 'ok') {
+                    const existing = response.existing_count || 0;
+                    statusLine.innerHTML = `감시 시작 — <span class="accent">${escapeHtml(folder)}</span> · 폴더 내 ${existing}개 영상 검사 시작 (이미 분석한 파일은 자동 제외)`;
+                } else {
+                    statusLine.textContent = `감시 시작 실패: ${response.msg || '알 수 없는 오류'}`;
+                }
+            }
+        });
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (runMode === 'auto') return;
+
+            if (runMode === 'stream') {
+                const url = streamUrlInput.value.trim();
+                if (!url) {
+                    statusLine.textContent = '스트리밍 주소를 입력해 주세요.';
+                    streamUrlInput.focus();
+                    return;
+                }
+                saveSettings();
+                const streamResponse = await ipcRenderer.invoke('start-video-from-path', {
+                    video_path: url,
+                    analysis_interval_seconds: Number(intervalRange.value),
+                    analysis_profile: profileSelect.value,
+                });
+                if (!streamResponse || streamResponse.status !== 'accepted') {
+                    statusLine.textContent = `스트림 시작 실패: ${streamResponse?.msg || '알 수 없는 오류'}`;
+                    return;
+                }
+                beginAnalysisUI(streamResponse, 'stream');
+                return;
+            }
+
+            const response = await ipcRenderer.invoke('start-video-analysis', {
+                analysis_interval_seconds: Number(intervalRange.value),
+                analysis_profile: profileSelect.value,
+            });
+
+            if (!response) {
+                statusLine.textContent = '영상 선택을 취소했습니다.';
+                return;
+            }
+
+            if (response.status !== 'accepted') {
+                statusLine.textContent = `분석 시작 실패: ${response.msg || '알 수 없는 오류'}`;
+                return;
+            }
+
+            beginAnalysisUI(response, 'manual');
+        });
+
+        // ============ Pause / resume + seek (manual file playback) ============
+        function setPauseButton(paused) {
+            const icPause = pauseBtn.querySelector('.ic-pause');
+            const icPlay = pauseBtn.querySelector('.ic-play');
+            if (icPause) icPause.style.display = paused ? 'none' : 'block';
+            if (icPlay) icPlay.style.display = paused ? 'block' : 'none';
+            pauseBtn.title = paused ? '재개' : '일시정지';
+            // Capture is only meaningful on a held (paused) frame.
+            captureBtn.disabled = !(paused && pauseBtn.style.display !== 'none');
+        }
+
+        function enablePlaybackControls(enabled) {
+            // Pause/seek only make sense for a seekable local file, not a live stream.
+            const on = enabled && !liveIsStream;
+            pauseBtn.disabled = !on;
+            pauseBtn.style.display = on ? 'inline-flex' : 'none';
+            captureBtn.style.display = on ? 'inline-flex' : 'none';
+            progressBar.classList.toggle('seekable', on);
+            if (!on) { isPaused = false; setPauseButton(false); }
+        }
+
+        pauseBtn.addEventListener('click', async () => {
+            if (pauseBtn.disabled) return;
+            isPaused = !isPaused;
+            setPauseButton(isPaused);
+            if (isPaused) { try { liveVideo.pause(); } catch (_) {} }
+            else { try { liveVideo.play().catch(() => {}); } catch (_) {} }
+            await ipcRenderer.invoke('pause-video-analysis', isPaused);
+        });
+
+        captureBtn.addEventListener('click', async () => {
+            if (captureBtn.disabled) return;
+            const prevTitle = captureBtn.title;
+            captureBtn.disabled = true;
+            const res = await ipcRenderer.invoke('capture-frame-analysis');
+            if (res && res.status === 'ok') {
+                statusLine.textContent = '현재 프레임을 캡처해 분석을 시작했습니다.';
+            } else {
+                statusLine.textContent = `캡처 실패: ${(res && res.msg) || '알 수 없는 오류'}`;
+            }
+            // Re-enable only if still paused (poll will also keep it in sync).
+            captureBtn.disabled = !isPaused;
+            captureBtn.title = prevTitle;
+        });
+
+        // Photo mode: load a single image and analyze it immediately.
+        loadImageBtn.addEventListener('click', async () => {
+            if (runMode !== 'photo') return;
+            const picked = await ipcRenderer.invoke('select-image');
+            if (!picked || !picked.path) return;
+
+            setSnapshotView('split');
+            snapshotImage.src = toFileUrl(picked.path);
+            analysisImage.removeAttribute('src');
+            imagePair.classList.add('is-waiting');
+            snapshotTimestamp.textContent = `${basename(picked.path)} · 분석 중…`;
+            statusLine.textContent = '이미지를 분석하고 있습니다…';
+            loadImageBtn.disabled = true;
+
+            const res = await ipcRenderer.invoke('analyze-image', picked.path, profileSelect.value);
+
+            imagePair.classList.remove('is-waiting');
+            loadImageBtn.disabled = false;
+            if (!res || res.status !== 'ok') {
+                snapshotTimestamp.textContent = basename(picked.path);
+                statusLine.textContent = `이미지 분석 실패: ${(res && res.msg) || '알 수 없는 오류'}`;
+                return;
+            }
+
+            analysisImage.src = `data:image/jpeg;base64,${res.annotated_base64}`;
+            const persons = Number(res.person_count || 0);
+            const vehicles = Number(res.vehicle_count || 0);
+            currentPersons.textContent = persons;
+            currentVehicles.textContent = vehicles;
+            hudCounts.textContent = `사람 ${persons} · 차량 ${vehicles}`;
+            setRisk(res.risk_level || 'clear');
+            riskSummary.textContent = res.risk_summary || '현재 감지된 사람이나 차량이 없습니다.';
+            snapshotTimestamp.textContent = `${basename(picked.path)} · 분석 완료`;
+            statusLine.innerHTML = `사진 분석 완료 · 사람 <span class="accent">${persons}</span> · 차량 <span class="accent">${vehicles}</span>`;
+        });
+
+        // Double-click the Hanwha logo to quit the program.
+        const brandLogo = document.querySelector('.brand-logo');
+        if (brandLogo) {
+            brandLogo.style.cursor = 'pointer';
+            brandLogo.title = '더블클릭하면 프로그램을 종료합니다';
+            brandLogo.addEventListener('dblclick', () => ipcRenderer.invoke('quit-app'));
+        }
+
+        function fractionFromEvent(event) {
+            const rect = progressBar.getBoundingClientRect();
+            return Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width)));
+        }
+
+        function previewSeek(fraction) {
+            const pct = `${(fraction * 100).toFixed(1)}%`;
+            progressFill.style.width = pct;
+            progressKnob.style.left = pct;
+            progressPercent.textContent = `${Math.round(fraction * 100)}%`;
+        }
+
+        async function commitSeek(fraction) {
+            // Sync the <video> element to the new position too.
+            if (!liveIsStream && Number.isFinite(liveVideo.duration) && liveVideo.duration > 0) {
+                try { liveVideo.currentTime = fraction * liveVideo.duration; } catch (_) {}
+            }
+            await ipcRenderer.invoke('seek-video-analysis', fraction);
+        }
+
+        progressBar.addEventListener('pointerdown', (event) => {
+            if (!progressBar.classList.contains('seekable')) return;
+            isSeeking = true;
+            progressBar.classList.add('seeking');
+            progressBar.setPointerCapture(event.pointerId);
+            previewSeek(fractionFromEvent(event));
+        });
+        progressBar.addEventListener('pointermove', (event) => {
+            if (!isSeeking) return;
+            previewSeek(fractionFromEvent(event));
+        });
+        progressBar.addEventListener('pointerup', async (event) => {
+            if (!isSeeking) return;
+            const fraction = fractionFromEvent(event);
+            isSeeking = false;
+            progressBar.classList.remove('seeking');
+            try { progressBar.releasePointerCapture(event.pointerId); } catch (_) {}
+            previewSeek(fraction);
+            await commitSeek(fraction);
+        });
+
+        stopBtn.addEventListener('click', async () => {
+            stopBtn.disabled = true;
+            isProcessing = false;
+            stopPolling();
+            resetAnalysisUI();
+
+            if (runMode === 'auto') {
+                pendingQueue.length = 0;
+                updateQueueBadge();
+                watchRow.classList.add('show');
+                updateWatchFolderUI();
+                runModeTag.textContent = '자동 모드';
+            }
+            updateAnalyzeButton();
+
+            const response = await ipcRenderer.invoke('stop-video-analysis');
+            if (response.status === 'ok') {
+                statusLine.textContent = runMode === 'auto'
+                    ? '분석 중지 — 대기열을 비웠습니다. 새 영상이 도착하면 다시 분석합니다.'
+                    : '분석을 중지하고 화면을 초기화했습니다.';
+            } else {
+                statusLine.textContent = `중지 요청 실패: ${response.msg || '알 수 없는 오류'}`;
+            }
+        });
+
+        intervalRange.addEventListener('input', () => {
+            intervalValue.textContent = `${intervalRange.value}s`;
+            if (!isProcessing && samplingMeta) samplingMeta.textContent = `${intervalRange.value}초`;
+        });
+
+        profileSelect.addEventListener('change', () => {
+            if (!isProcessing && profileMeta) profileMeta.textContent = profileSelect.value;
+        });
+
+        openEventFolderBtn.addEventListener('click', async () => {
+            const target = resolveEventDirectory(latestState);
+            if (!target) {
+                statusLine.textContent = '열 수 있는 저장 폴더가 아직 없습니다.';
+                return;
+            }
+            const response = await ipcRenderer.invoke('open-path', target);
+            if (response.status !== 'ok') {
+                statusLine.textContent = `폴더 열기 실패: ${response.msg || '알 수 없는 오류'}`;
+            }
+        });
+
+        // Snapshot tabs
+        snapshotTabs.addEventListener('click', (event) => {
+            const tab = event.target.closest('.tab');
+            if (!tab) return;
+            setSnapshotView(tab.dataset.view);
+        });
+
+        // Snapshot image click to zoom
+        imagePair.querySelectorAll('.image-cell').forEach((cell) => {
+            cell.addEventListener('click', () => {
+                const img = cell.querySelector('img');
+                if (!img || !img.src) return;
+                const label = snapshotTimestamp.textContent || '스냅샷';
+                const caption = `${cell.dataset.cell === 'annotated' ? '분석 결과' : '원본 스냅샷'} / ${label}`;
+                openPreviewModal(img.src, caption);
+            });
+        });
+
+        // Navigation: scroll to the matching section inside the content area
+        const contentScroll = document.querySelector('.content');
+        document.querySelectorAll('.nav-item[data-scroll-to]').forEach((item) => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
+                item.classList.add('active');
+
+                const target = document.getElementById(item.dataset.scrollTo);
+                if (!target || !contentScroll) return;
+                const top = target.offsetTop - 12;
+                contentScroll.scrollTo({ top, behavior: 'smooth' });
+            });
+        });
+
+        // Modal
+        closeModalBtn.addEventListener('click', closePreviewModal);
+        imageModal.addEventListener('click', (event) => {
+            if (event.target === imageModal) closePreviewModal();
+        });
+
+        // Prev / next navigation
+        prevImgBtn.addEventListener('click', (e) => { e.stopPropagation(); stepGallery(-1); });
+        nextImgBtn.addEventListener('click', (e) => { e.stopPropagation(); stepGallery(1); });
+
+        // Zoom buttons
+        zoomInBtn.addEventListener('click', () => setZoom(zoomScale + 0.3));
+        zoomOutBtn.addEventListener('click', () => setZoom(zoomScale - 0.3));
+        zoomResetBtn.addEventListener('click', resetZoom);
+
+        // Wheel zoom toward the cursor.
+        modalStage.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
+            setZoom(zoomScale * factor, event.clientX, event.clientY);
+        }, { passive: false });
+
+        // Double-click toggles between fit and 2x.
+        modalImage.addEventListener('dblclick', (event) => {
+            if (zoomScale > 1.001) resetZoom();
+            else setZoom(2, event.clientX, event.clientY);
+        });
+
+        // Drag to pan while zoomed in.
+        let panning = false, panStartX = 0, panStartY = 0, panOrigX = 0, panOrigY = 0;
+        modalImage.addEventListener('pointerdown', (event) => {
+            if (zoomScale <= 1.001) return;
+            panning = true;
+            panStartX = event.clientX; panStartY = event.clientY;
+            panOrigX = zoomTx; panOrigY = zoomTy;
+            modalStage.classList.add('panning');
+            modalImage.setPointerCapture(event.pointerId);
+        });
+        modalImage.addEventListener('pointermove', (event) => {
+            if (!panning) return;
+            zoomTx = panOrigX + (event.clientX - panStartX);
+            zoomTy = panOrigY + (event.clientY - panStartY);
+            applyZoomTransform();
+        });
+        const endPan = (event) => {
+            if (!panning) return;
+            panning = false;
+            modalStage.classList.remove('panning');
+            try { modalImage.releasePointerCapture(event.pointerId); } catch (_) {}
+        };
+        modalImage.addEventListener('pointerup', endPan);
+        modalImage.addEventListener('pointercancel', endPan);
+
+        window.addEventListener('keydown', (event) => {
+            if (imageModal.classList.contains('open')) {
+                if (event.key === 'Escape') { closePreviewModal(); return; }
+                if (event.key === 'ArrowLeft') { stepGallery(-1); return; }
+                if (event.key === 'ArrowRight') { stepGallery(1); return; }
+                if (event.key === '+' || event.key === '=') { setZoom(zoomScale + 0.3); return; }
+                if (event.key === '-' || event.key === '_') { setZoom(zoomScale - 0.3); return; }
+                return;
+            }
+            if (event.key === 'Escape' && settingsModal.classList.contains('open')) closeSettingsModal();
+        });
+
+        // Settings modal
+        settingsBtn.addEventListener('click', openSettingsModal);
+        settingsCloseBtn.addEventListener('click', closeSettingsModal);
+        settingsResetBtn.addEventListener('click', () => { if (engineSettings) fillSettingsForm(engineSettings); });
+        settingsSaveBtn.addEventListener('click', saveSettingsModal);
+        settingsModal.addEventListener('click', (event) => {
+            if (event.target === settingsModal) closeSettingsModal();
+        });
+        bindSettingRangeLabels();
+
+        // ============ Init ============
+        intervalValue.textContent = `${intervalRange.value}s`;
+        if (samplingMeta) samplingMeta.textContent = `${intervalRange.value}초`;
+        if (profileMeta) profileMeta.textContent = profileSelect.value;
+        setSnapshotView('split');
+        loadSettings();
+        updateQueueBadge();
+        applyMode(true);
+        checkModelStatus();
+        setInterval(checkModelStatus, 1000);
+    </script>
+</body>
+</html>

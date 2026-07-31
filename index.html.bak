@@ -339,77 +339,6 @@
         .content::-webkit-scrollbar { width: 10px; }
         .content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.10); border-radius: 999px; }
 
-        /* ============ Views (IA) ============ */
-        .view { display: none; flex-direction: column; gap: 16px; min-width: 0; }
-        .view.active { display: flex; animation: viewIn 0.22s ease; }
-        @keyframes viewIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-
-        .view-header {
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            gap: 16px;
-            padding: 2px 2px 6px;
-            border-bottom: 1px solid var(--border-soft);
-        }
-        .view-title { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
-        .view-desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
-        .view-header-meta { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--muted); }
-        .view-clock { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-2); letter-spacing: 0.04em; }
-        .view-header-meta .led { width: 7px; height: 7px; border-radius: 50%; background: var(--safe); box-shadow: 0 0 6px var(--safe); display: inline-block; margin-right: 5px; }
-
-        /* ============ Dashboard ============ */
-        .dash-hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; }
-        .dash-hero-main { display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 24px 26px; }
-        .dash-hero-eyebrow { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
-        .dash-risk-big { font-size: 42px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; color: var(--on-safe); }
-        .dash-risk-big.risk-clear { color: var(--on-safe); }
-        .dash-risk-big.risk-notice { color: var(--on-notice); }
-        .dash-risk-big.risk-warning { color: var(--on-warn); }
-        .dash-risk-big.risk-critical { color: var(--on-danger); }
-        .dash-hero-sub { font-size: 13px; color: var(--text-2); }
-        .dash-hero-side { display: flex; flex-direction: column; justify-content: center; gap: 11px; padding: 20px 24px; }
-        .dash-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--muted); }
-        .dash-line b { color: var(--text); font-weight: 600; text-align: right; }
-        .dash-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
-        .dash-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-        .dash-actions-btns { display: flex; gap: 10px; flex-wrap: wrap; }
-
-        @media (max-width: 1100px) {
-            .dash-hero { grid-template-columns: 1fr; }
-            .dash-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        }
-
-        /* ============ Geo tags (estimated) ============ */
-        .geo-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); cursor: pointer; user-select: none; }
-        .geo-toggle input { accent-color: var(--brand); }
-        .geo-note { font-size: 11px; color: var(--muted); margin: -4px 0 10px; display: flex; align-items: center; gap: 6px; }
-        .geo-note .badge-est { font-size: 9px; letter-spacing: 0.1em; padding: 2px 6px; border-radius: 999px; background: var(--brand-weak); color: var(--on-brand); font-weight: 700; }
-        .geo-table-wrap { overflow: auto; max-height: 240px; }
-        table.geo-table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
-        .geo-table th { text-align: left; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-card); }
-        .geo-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-soft); color: var(--text); white-space: nowrap; }
-        .geo-table tr:last-child td { border-bottom: none; }
-
-        /* TEMP: hide the coordinate cards ("탐지 위치 좌표" / "좌표 설정") while
-           that feature is being prototyped. Uses !important so it wins over the
-           inline display that renderGeoTags() sets on #geoResultCard. Remove
-           these two selectors to bring the cards back. */
-        #geoResultCard, .geo-settings-card { display: none !important; }
-        .geo-cls { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
-        .geo-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-        .geo-dot.person { background: var(--brand); }
-        .geo-dot.vehicle { background: var(--warn); }
-        .geo-empty { color: var(--muted); font-size: 12px; padding: 10px 4px; text-align: center; }
-        .geo-coord { color: var(--text-2); }
-        .geo-tele-wrap { margin-bottom: 10px; }
-        .geo-tele-wrap summary { font-size: 12px; color: var(--text-2); cursor: pointer; user-select: none; padding: 2px 0; }
-        .geo-tele-wrap summary:hover { color: var(--text); }
-        .geo-tele { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
-        .geo-tele label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: var(--muted); letter-spacing: 0.04em; }
-        .geo-tele input { width: 100%; padding: 5px 7px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-elev); color: var(--text); font-size: 12px; font-variant-numeric: tabular-nums; }
-        .geo-tele input:focus { outline: none; box-shadow: var(--ring); border-color: var(--brand); }
-
         /* ============ Mission Bar ============ */
         .mission-bar {
             display: grid;
@@ -450,7 +379,6 @@
             background: var(--bg-soft);
             color: var(--muted);
             border: 1px solid var(--border-soft);
-            white-space: nowrap;
         }
 
         .mission-state.idle { color: var(--muted); }
@@ -477,22 +405,10 @@
             margin-left: 4px;
         }
 
-        .mission-meta span { white-space: nowrap; }
-
         .mission-controls {
             display: flex;
             align-items: center;
-            flex-wrap: wrap;
             gap: 12px;
-        }
-
-        /* Status chips (info) and the controls ALWAYS sit on separate rows,
-           stacked vertically, so they can never collide/overlap at any window
-           width. Controls wrap within their own row when space is tight. */
-        .mission-split {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
         }
 
         .ctl-group {
@@ -750,10 +666,7 @@
         /* ============ Ops Grid ============ */
         .ops-grid {
             display: grid;
-            /* Live video column narrowed by 30% (1.55fr -> 1.085fr); the freed
-               0.465fr goes to the snapshot rail (0.85fr -> 1.315fr), so the
-               track total is unchanged and only the split moves. */
-            grid-template-columns: minmax(0, 1.085fr) minmax(360px, 1.315fr);
+            grid-template-columns: minmax(0, 1.55fr) minmax(360px, 0.85fr);
             gap: 16px;
         }
 
@@ -812,11 +725,7 @@
             overflow: hidden;
             background: #02060a;
             border: 1px solid rgba(255, 255, 255, 0.06);
-            /* Floor for the idle placeholder only. The stage otherwise takes
-               the video's own height, so a narrower column shrinks the frame
-               instead of padding it with letterbox bars. Was 440px, which sat
-               ~150px above a 16:9 frame once the column was narrowed. */
-            min-height: 300px;
+            min-height: 440px;
         }
 
         #liveVideo,
@@ -1033,34 +942,17 @@
             min-height: 0;
         }
 
-        /* The rail is stretched to the live-video column, but the snapshot is
-           16:9 — forcing the cells to that full height only added letterbox
-           bars above and below the frame. Size the cells to the image instead
-           and hand the freed height to the card head (gauge + tabs). */
         .snapshot-card .image-pair {
-            flex: 0 0 auto;
+            flex: 1;
             min-height: 0;
         }
 
-        /* Reserve the frame's box up front. Sizing the cell from the loaded
-           image made it collapse to nothing until the first snapshot arrived
-           and then jump to full height; a fixed 16:9 box (the source aspect)
-           holds the exact final size from the start, with no letterbox once
-           the image lands. */
-        .snapshot-card .image-cell {
-            height: auto;
-            aspect-ratio: 16 / 9;
-        }
+        .snapshot-card .image-cell { height: 100%; }
 
         .snapshot-card .image-cell img {
             height: 100%;
             min-height: 0;
         }
-
-        /* Head keeps its natural height — stretching it and pushing the gauge
-           down with margin-top:auto opened a large void above the frames. Any
-           slack now falls below the images, at the bottom of the card. */
-        .snapshot-card .card-head { flex: 0 0 auto; }
 
         .image-cell {
             position: relative;
@@ -1129,19 +1021,11 @@
         .result-meta .accent { color: var(--accent); font-weight: 700; }
 
         /* ============ Events ============ */
-        /* The events view fills the whole content area (down to the bottom)
-           instead of scrolling inside a short 460px box. */
-        .view[data-view-panel="events"] { flex: 1 1 auto; min-height: 0; }
-        #eventsSection { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-        #eventsSection > .card-head { flex: 0 0 auto; }
-
         .events-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 12px;
-            flex: 1 1 auto;
-            min-height: 0;
-            align-content: start;   /* cards stay top-aligned, rows don't stretch */
+            max-height: 460px;
             overflow-y: auto;
             padding-right: 4px;
         }
@@ -1189,43 +1073,8 @@
         }
 
         .event-frame { font-size: 11px; color: var(--muted); }
-
-        /* Event time — kept prominent and clean (HH:MM:SS). */
-        .event-time {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text);
-            font-variant-numeric: tabular-nums;
-            letter-spacing: 0.02em;
-        }
-
-        /* Big, high-visibility person / vehicle counts (no class-name text). */
-        .event-counts { display: flex; gap: 8px; margin-top: 8px; }
-        .event-count {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            padding: 8px 6px;
-            border-radius: var(--radius-sm);
-            background: var(--bg-softer);
-        }
-        .event-count .num {
-            font-size: 30px;
-            font-weight: 800;
-            line-height: 1;
-            font-variant-numeric: tabular-nums;
-        }
-        .event-count .lbl {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--muted);
-            letter-spacing: 0.04em;
-        }
-        .event-count.person .num { color: var(--on-safe); }
-        .event-count.vehicle .num { color: var(--on-brand); }
-        .event-count.zero .num { color: var(--muted-2); }
+        .event-info { font-size: 11px; color: var(--muted); line-height: 1.55; word-break: break-all; }
+        .event-info b { color: var(--text-2); font-weight: 600; }
 
         .empty {
             grid-column: 1 / -1;
@@ -1558,130 +1407,6 @@
             letter-spacing: 0.12em;
         }
 
-        /* Capture / analysis progress under the snapshot title.
-           The paired snapshot image is intentionally delayed to match its
-           detection, so this line gives real-time feedback on how many frames
-           have been captured and which one is currently being analyzed. */
-        .snapshot-progress { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
-        .snapshot-progress[hidden] { display: none; }
-        .snapshot-progress-bar {
-            position: relative;
-            flex: 1;
-            height: 4px;
-            border-radius: 999px;
-            background: var(--border-soft);
-            overflow: hidden;
-        }
-        /* Constant full bar — identical size at all times (analyzing or done),
-           no motion and no resizing. Activity is shown by the text label
-           ("N번째 분석 중"), not by the bar changing shape. */
-        .snapshot-progress-fill {
-            height: 100%;
-            width: 100%;
-            border-radius: 999px;
-            background: var(--accent);
-        }
-        .snapshot-progress-label {
-            font-size: 11px;
-            color: var(--muted);
-            white-space: nowrap;
-            font-variant-numeric: tabular-nums;
-        }
-        .snapshot-progress-label .now { color: var(--accent); font-weight: 700; }
-
-        /* ===== Capture / analysis cell gauge =====
-           One cell per sampled snapshot. Top row fills as frames are captured,
-           bottom row fills as each is analyzed — so the bottom row trails the
-           top by exactly the inference backlog. The bottom row is colored by
-           what was found, which also makes "analysed but nothing there" a
-           visible state; the event archive can only show the frames it saved. */
-        /* Both rows share ONE grid so the track column is identical on each.
-           With a grid per row, the trailing text column ("25장" vs
-           "25 완료 · 감지 25") sized independently and the cells ended up
-           different widths between the two rows. */
-        .snapshot-gauge { margin-top: 10px; display: none; }
-        .snapshot-gauge.show {
-            display: grid;
-            /* Track column is sized by its cells (max-content), so it grows as
-               captures accumulate and pushes the trailing text right. Once it
-               hits the space available it stops growing and scrolls — the
-               cells keep their size instead of being squeezed. */
-            grid-template-columns: auto minmax(0, max-content) auto;
-            align-items: start;
-            gap: 8px 12px;
-        }
-        /* Both tracks live in ONE scroller so they can never drift out of
-           column alignment with each other. */
-        .gauge-scroll {
-            display: grid;
-            gap: 8px;
-            overflow-x: auto;
-            overflow-y: hidden;
-        }
-        .gauge-scroll::-webkit-scrollbar { height: 6px; }
-        .gauge-scroll::-webkit-scrollbar-track { background: transparent; }
-        .gauge-scroll::-webkit-scrollbar-thumb {
-            background: var(--border-strong);
-            border-radius: 3px;
-        }
-        .gauge-names, .gauge-values { display: grid; gap: 8px; }
-        .gauge-names span, .gauge-values span {
-            height: 24px;              /* match .gauge-track so rows line up */
-            display: flex;
-            align-items: center;
-        }
-        .gauge-name { font-size: 13px; font-weight: 600; color: var(--text-2); }
-        .gauge-track { display: flex; gap: 2px; height: 24px; width: max-content; }
-        .gauge-value {
-            font-size: 14px;
-            color: var(--muted);
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap;
-        }
-        .gauge-value b { color: var(--text); font-size: 16px; }
-        /* Fixed width, never grows, never shrinks. Cells used to divide the
-           track evenly (flex: 1 1 0), so 10 captures drew fat blocks and 100
-           drew slivers. One capture is now always the same size on screen;
-           the row extends sideways and scrolls instead of compressing. */
-        .gauge-cell {
-            flex: 0 0 var(--gauge-cell-w, 32px);
-            border-radius: 3px;
-            background: var(--border-soft);
-        }
-        .gauge-cell.cap-full { background: var(--muted-2); }
-        .gauge-cell.cap-partial { background: rgba(147, 160, 173, 0.45); }
-        /* Analysis outcome: clear / vehicle / person / person+vehicle. */
-        .gauge-cell.r0 { background: var(--safe); }
-        .gauge-cell.r1 { background: var(--notice); }
-        .gauge-cell.r2 { background: var(--warn); }
-        .gauge-cell.r3 { background: var(--danger); }
-        /* Captured, waiting its turn in the inference queue. */
-        .gauge-cell.busy {
-            background: var(--brand-weak);
-            animation: gaugePulse 1.2s ease-in-out infinite;
-        }
-        /* Captured but never analyzed — the backlog outgrew its memory budget.
-           Hatched so it can't be mistaken for a clear (green) result. */
-        .gauge-cell.skipped {
-            background: repeating-linear-gradient(45deg,
-                var(--muted-2) 0 3px, transparent 3px 6px);
-        }
-        @keyframes gaugePulse { 50% { background: rgba(243, 115, 33, 0.42); } }
-        .gauge-legend {
-            grid-column: 2 / -1;   /* line up under the track, not the label */
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px 16px;
-            margin-top: 2px;
-            font-size: 12px;
-            color: var(--muted);
-        }
-        .gauge-legend span { display: inline-flex; align-items: center; gap: 6px; }
-        .gauge-legend i {
-            width: 12px; height: 12px; border-radius: 3px;
-            display: inline-block;
-        }
-
         /* Richer empty state. */
         .empty {
             display: flex;
@@ -1778,67 +1503,6 @@
             transition: width 0.3s ease;
         }
         @keyframes enginePrepSpin { to { transform: rotate(360deg); } }
-
-        /* Failed load: recolor the panel so a stuck bar can't read as "busy". */
-        .engine-prep.failed {
-            background: rgba(255, 90, 95, 0.10);
-            border-color: rgba(255, 90, 95, 0.38);
-        }
-        .engine-prep.failed .engine-prep-fill { background: var(--danger, #ff5a5f); }
-        .engine-prep.failed .engine-prep-head .spinner { display: none; }
-
-        .engine-prep-sub {
-            margin-top: 6px;
-            font-size: var(--text-xs, 11px);
-            color: var(--text-2, #8fa6bb);
-            font-variant-numeric: tabular-nums;
-            min-height: 14px;
-        }
-        .engine-prep-stages {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
-            gap: 3px 18px;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid rgba(255, 255, 255, 0.07);
-        }
-        .engine-prep-stage {
-            display: grid;
-            grid-template-columns: 15px minmax(0, 1fr) auto;
-            align-items: center;
-            gap: 8px;
-            font-size: var(--text-xs, 11px);
-            color: var(--text-2, #8fa6bb);
-            line-height: 1.9;
-        }
-        .engine-prep-stage .mark { text-align: center; flex: none; }
-        .engine-prep-stage .name {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .engine-prep-stage .name .detail { opacity: 0.62; }
-        .engine-prep-stage .ms {
-            font-variant-numeric: tabular-nums;
-            opacity: 0.55;
-        }
-        .engine-prep-stage.running { color: #cfe4ff; }
-        .engine-prep-stage.running .mark { color: #4a9eff; }
-        .engine-prep-stage.done .mark { color: #37d67a; }
-        .engine-prep-stage.done { color: var(--text-2, #8fa6bb); }
-        .engine-prep-stage.skipped { opacity: 0.5; }
-        .engine-prep-stage.failed { color: #ff9aa0; }
-        .engine-prep-stage.failed .mark { color: var(--danger, #ff5a5f); }
-        .engine-prep-stage.pending { opacity: 0.42; }
-        /* Reuse the head spinner for the in-flight stage marker. */
-        .engine-prep-stage .mark .spinner {
-            display: inline-block;
-            width: 9px; height: 9px;
-            border: 2px solid rgba(74, 158, 255, 0.28);
-            border-top-color: #4a9eff;
-            border-radius: 50%;
-            animation: enginePrepSpin 0.8s linear infinite;
-        }
     </style>
 </head>
 <body>
@@ -1865,26 +1529,14 @@
         <aside class="sidebar">
             <div>
                 <div class="nav-group-label">Operations</div>
-                <button class="nav-item active" data-view="dashboard">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-                    대시보드
-                </button>
-                <button class="nav-item" data-view="live">
+                <button class="nav-item active" data-scroll-to="liveSection">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/></svg>
-                    실시간 관제
+                    라이브 분석
                 </button>
-                <button class="nav-item" data-view="events">
+                <button class="nav-item" data-scroll-to="eventsSection">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M3 10h18"/></svg>
                     이벤트 아카이브
                     <span class="nav-tag" id="navEventsCount">0</span>
-                </button>
-            </div>
-
-            <div>
-                <div class="nav-group-label">System</div>
-                <button class="nav-item" data-action="settings">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    설정
                 </button>
             </div>
 
@@ -1899,80 +1551,22 @@
             </div>
             <div id="enginePrep" class="engine-prep">
                 <div class="engine-prep-head">
-                    <span class="label"><span class="spinner"></span><span id="enginePrepText">AI 엔진을 준비하고 있습니다…</span></span>
+                    <span class="label"><span class="spinner"></span><span id="enginePrepText">AI 모델을 준비하고 있습니다… (최초 실행 시 다운로드로 더 걸릴 수 있습니다)</span></span>
                     <span class="pct" id="enginePrepPct">0%</span>
                 </div>
                 <div class="engine-prep-track"><div class="engine-prep-fill" id="enginePrepFill"></div></div>
-                <div class="engine-prep-sub" id="enginePrepSub"></div>
-                <div class="engine-prep-stages" id="enginePrepStages"></div>
             </div>
-
-            <!-- ============ VIEW HEADER ============ -->
-            <div class="view-header">
-                <div>
-                    <div class="view-title" id="viewTitle">대시보드</div>
-                    <div class="view-desc" id="viewDesc">현장 관제 시스템 개요</div>
-                </div>
-                <div class="view-header-meta">
-                    <span><span class="led"></span>System Online</span>
-                    <span class="view-clock" id="viewClock">--:--:--</span>
-                </div>
-            </div>
-
-            <!-- ============ VIEW: DASHBOARD ============ -->
-            <div class="view active" data-view-panel="dashboard">
-                <section class="dash-hero">
-                    <div class="dash-hero-main card">
-                        <div class="dash-hero-eyebrow">현재 현장 위험도</div>
-                        <div class="dash-risk-big risk-clear" data-mirror-risk="riskBadge">CLEAR</div>
-                        <div class="dash-hero-sub" data-mirror="missionState">대기 중</div>
-                    </div>
-                    <div class="dash-hero-side card">
-                        <div class="dash-line"><span>AI 엔진</span><b data-mirror="engineStatus">Engine</b></div>
-                        <div class="dash-line"><span>실행 디바이스</span><b data-mirror="deviceBadge">Device · —</b></div>
-                        <div class="dash-line"><span>분석 프로필</span><b data-mirror="profileMeta">balanced</b></div>
-                        <div class="dash-line"><span>선택 영상</span><b data-mirror="selectedVideo">없음</b></div>
-                    </div>
-                </section>
-
-                <section class="dash-kpis">
-                    <div class="kpi-card accent"><div class="kpi-label">현재 사람</div><div class="kpi-value" data-mirror="currentPersons">0</div><div class="kpi-foot">PERSON · live</div></div>
-                    <div class="kpi-card warn"><div class="kpi-label">현재 차량</div><div class="kpi-value" data-mirror="currentVehicles">0</div><div class="kpi-foot">VEHICLE · live</div></div>
-                    <div class="kpi-card"><div class="kpi-label">저장 이벤트</div><div class="kpi-value" data-mirror="eventCount">0</div><div class="kpi-foot">SAVED</div></div>
-                    <div class="kpi-card"><div class="kpi-label">분석 완료</div><div class="kpi-value small" data-mirror="analysisCount">0</div><div class="kpi-foot">ANALYZED</div></div>
-                    <div class="kpi-card"><div class="kpi-label">원본 FPS</div><div class="kpi-value small" data-mirror="streamFps">0.0</div><div class="kpi-foot">STREAM</div></div>
-                    <div class="kpi-card"><div class="kpi-label">추론 FPS</div><div class="kpi-value small" data-mirror="inferenceFps">0.0</div><div class="kpi-foot">INFERENCE</div></div>
-                </section>
-
-                <section class="card dash-actions">
-                    <div>
-                        <div class="card-title">빠른 실행</div>
-                        <div class="card-sub">실시간 관제 화면으로 이동하거나 저장된 이벤트를 확인하세요.</div>
-                    </div>
-                    <div class="dash-actions-btns">
-                        <button class="btn-primary" data-goto-view="live">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                            실시간 관제 시작
-                        </button>
-                        <button class="btn-ghost" data-goto-view="events">이벤트 아카이브</button>
-                        <button class="btn-ghost" data-action="settings">감지 설정</button>
-                    </div>
-                </section>
-            </div>
-
-            <!-- ============ VIEW: LIVE ============ -->
-            <div class="view" data-view-panel="live">
             <!-- Mission Bar -->
             <section id="liveSection" class="mission-bar" style="grid-template-columns: 1fr; gap: 0;">
-                <div class="mission-split">
+                <div style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center;">
                     <div class="mission-info">
                         <div class="mission-row">
                             <div id="missionState" class="mission-state idle"><span class="led"></span>대기 중</div>
-                            <div id="streamInfo" class="tag" style="display:none">stream idle</div>
+                            <div id="streamInfo" class="tag">stream idle</div>
                             <div id="runModeTag" class="tag">수동 모드</div>
                             <div id="engineStatus" class="led-pill"><span class="led"></span>Engine</div>
-                            <div id="deviceBadge" class="led-pill" style="display:none">Device · —</div>
-                            <div id="riskBadge" class="led-pill risk-badge risk-clear" style="display:none">CLEAR</div>
+                            <div id="deviceBadge" class="led-pill">Device · —</div>
+                            <div id="riskBadge" class="led-pill risk-badge risk-clear">CLEAR</div>
                         </div>
                         <div class="mission-meta">
                             <span>선택 영상<b id="selectedVideo">없음</b></span>
@@ -2121,26 +1715,6 @@
                         </div>
                         <div class="status-line" id="riskSummary">현재 감지된 사람이나 차량이 없습니다.</div>
                     </div>
-
-                    <div class="card geo-result-card" id="geoResultCard">
-                        <div class="card-head">
-                            <div>
-                                <div class="card-title">탐지 위치 좌표</div>
-                                <div class="card-sub">탐지된 사람·차량의 추정 지리좌표</div>
-                            </div>
-                            <span class="badge-est">추정</span>
-                        </div>
-                        <div class="geo-table-wrap">
-                            <table class="geo-table">
-                                <thead>
-                                    <tr><th>#</th><th>종류</th><th>신뢰도</th><th>위도</th><th>경도</th><th>고도(m)</th></tr>
-                                </thead>
-                                <tbody id="geoTableBody">
-                                    <tr><td colspan="6"><div class="geo-empty">탐지된 대상이 없습니다.</div></td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Right rail -->
@@ -2150,29 +1724,6 @@
                             <div>
                                 <div class="card-title">캡처 스냅샷</div>
                                 <div class="card-sub" id="snapshotTimestamp">아직 캡처된 스냅샷이 없습니다.</div>
-                                <div class="snapshot-progress" id="snapshotProgress" hidden>
-                                    <div class="snapshot-progress-bar" id="snapshotProgressBar"><div class="snapshot-progress-fill" id="snapshotProgressFill"></div></div>
-                                    <div class="snapshot-progress-label" id="snapshotProgressLabel"></div>
-                                </div>
-                                <div class="snapshot-gauge" id="snapshotGauge">
-                                    <div class="gauge-names"><span>캡처</span><span>분석</span></div>
-                                    <div class="gauge-scroll" id="gaugeScroll">
-                                        <div class="gauge-track" id="gaugeCaptureTrack"></div>
-                                        <div class="gauge-track" id="gaugeAnalysisTrack"></div>
-                                    </div>
-                                    <div class="gauge-values">
-                                        <span class="gauge-value" id="gaugeCaptureValue"></span>
-                                        <span class="gauge-value" id="gaugeAnalysisValue"></span>
-                                    </div>
-                                    <div class="gauge-legend">
-                                        <span><i style="background:var(--safe)"></i>감지 없음</span>
-                                        <span><i style="background:var(--notice)"></i>차량</span>
-                                        <span><i style="background:var(--warn)"></i>사람</span>
-                                        <span><i style="background:var(--danger)"></i>사람+차량</span>
-                                        <span><i style="background:var(--brand-weak)"></i>분석 대기</span>
-                                        <span><i class="gauge-cell skipped" style="flex:none"></i>미분석</span>
-                                    </div>
-                                </div>
                             </div>
                             <div class="snapshot-head-actions">
                                 <button id="loadImageBtn" class="btn-ghost" style="display:none;" title="이미지를 불러와 즉시 분석합니다">불러오기</button>
@@ -2186,45 +1737,17 @@
                         <div id="imagePair" class="image-pair split">
                             <div class="image-cell" data-cell="raw">
                                 <img id="snapshotImage" alt="원본 스냅샷" />
-                                <div class="image-tag" id="snapshotTag">RAW</div>
+                                <div class="image-tag">RAW</div>
                             </div>
                             <div class="image-cell" data-cell="annotated">
                                 <img id="analysisImage" alt="분석 결과" />
-                                <div class="image-tag analysis" id="analysisTag">ANNOTATED</div>
+                                <div class="image-tag analysis">ANNOTATED</div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="card geo-settings-card">
-                        <div class="card-head">
-                            <div>
-                                <div class="card-title">좌표 설정</div>
-                                <div class="card-sub">드론 텔레메트리 · 좌표 산출 기준</div>
-                            </div>
-                            <label class="geo-toggle">
-                                <input type="checkbox" id="geoToggle" checked />
-                                좌표 표시
-                            </label>
-                        </div>
-                        <div class="geo-note"><span class="badge-est">추정</span> 가정 텔레메트리 기반 · 측량 정확도 아님</div>
-                        <details class="geo-tele-wrap" open>
-                            <summary>드론 텔레메트리 (DJI Pilot 값 입력 → 실제 위치로 테스트)</summary>
-                            <div class="geo-tele">
-                                <label>위도<input type="number" step="0.000001" id="teleLat" /></label>
-                                <label>경도<input type="number" step="0.000001" id="teleLon" /></label>
-                                <label>고도 AGL(m)<input type="number" step="1" id="teleAgl" /></label>
-                                <label>방위(°)<input type="number" step="1" id="teleHeading" /></label>
-                                <label>짐벌각(°)<input type="number" step="1" id="telePitch" /></label>
-                                <label>수직화각(°)<input type="number" step="1" id="teleVfov" /></label>
-                            </div>
-                        </details>
                     </div>
                 </aside>
             </section>
-            </div><!-- /view: live -->
 
-            <!-- ============ VIEW: EVENTS ============ -->
-            <div class="view" data-view-panel="events">
             <!-- Events archive -->
             <section id="eventsSection" class="card">
                 <div class="card-head">
@@ -2240,7 +1763,6 @@
                     <div class="empty">아직 저장된 이벤트가 없습니다.</div>
                 </div>
             </section>
-            </div><!-- /view: events -->
         </main>
     </div>
 
@@ -2440,24 +1962,7 @@
 
         const snapshotImage = document.getElementById('snapshotImage');
         const analysisImage = document.getElementById('analysisImage');
-        const snapshotTag = document.getElementById('snapshotTag');
-        const analysisTag = document.getElementById('analysisTag');
-
-        // Back to plain labels: no capture number belongs to the panels yet.
-        function resetImageTags() {
-            snapshotTag.textContent = 'RAW';
-            analysisTag.textContent = 'ANNOTATED';
-        }
         const snapshotTimestamp = document.getElementById('snapshotTimestamp');
-        const snapshotProgress = document.getElementById('snapshotProgress');
-        const snapshotProgressBar = document.getElementById('snapshotProgressBar');
-        const snapshotProgressLabel = document.getElementById('snapshotProgressLabel');
-        const snapshotGauge = document.getElementById('snapshotGauge');
-        const gaugeScroll = document.getElementById('gaugeScroll');
-        const gaugeCaptureTrack = document.getElementById('gaugeCaptureTrack');
-        const gaugeAnalysisTrack = document.getElementById('gaugeAnalysisTrack');
-        const gaugeCaptureValue = document.getElementById('gaugeCaptureValue');
-        const gaugeAnalysisValue = document.getElementById('gaugeAnalysisValue');
         const imagePair = document.getElementById('imagePair');
         const snapshotTabs = document.getElementById('snapshotTabs');
 
@@ -2574,9 +2079,9 @@
             hudRisk.className = `hud-risk-banner ${klass}`;
             hudRisk.textContent = String(level || 'clear').toUpperCase();
 
-            // Corner detection/danger toast disabled per request — the risk is
-            // already shown on the video HUD banner and in the event archive,
-            // so the bottom-right pop-up was redundant.
+            if (level && level !== lastRiskLevel && level !== 'clear' && isProcessing) {
+                pushToast(level);
+            }
             lastRiskLevel = level || 'clear';
         }
 
@@ -2615,7 +2120,6 @@
         }
 
         function setEngineReady(ready, response = null) {
-            engineIsReady = !!ready;
             setEngineLed(ready ? 'ready' : 'init');
             // Respect the current mode (photo/auto keep the analyze button off)
             // instead of unconditionally re-enabling it on every status poll.
@@ -2623,9 +2127,10 @@
 
             if (response) {
                 const dev = String(response.device || '—').toUpperCase();
-                // Internal pipeline layers (L1·L4·L5) removed from the badge —
-                // not meaningful to end users; keep just the device (CPU/GPU).
-                deviceBadge.textContent = `Device · ${dev}`;
+                const layerInfo = summarizeLayers(response.layers);
+                deviceBadge.textContent = layerInfo
+                    ? `Device · ${dev} · ${layerInfo}`
+                    : `Device · ${dev}`;
                 deviceBadge.title = dev === 'CPU'
                     ? 'CPU 모드 — 무거운 레이어(L2 SAHI / L3 VLM)는 기본 비활성화됩니다. 설정에서 강제로 켤 수 있습니다.'
                     : 'GPU(CUDA) 모드 — 전체 레이어 사용 가능';
@@ -2680,17 +2185,8 @@
 
             snapshotImage.removeAttribute('src');
             analysisImage.removeAttribute('src');
-            resetImageTags();
             imagePair.classList.remove('is-waiting');
             snapshotTimestamp.textContent = '아직 캡처된 스냅샷이 없습니다.';
-            snapshotProgress.hidden = true;
-            snapshotProgressBar.classList.remove('analyzing');
-            snapshotProgressLabel.textContent = '';
-            snapshotGauge.classList.remove('show');
-            gaugeCaptureTrack.innerHTML = '';
-            gaugeAnalysisTrack.innerHTML = '';
-            gaugeSignature = '';
-            _lastEventsSig = '';  // force the event archive to rebuild for the new session
 
             currentPersons.textContent = '0';
             currentVehicles.textContent = '0';
@@ -2756,142 +2252,8 @@
             return lp ? path.dirname(lp) : '';
         }
 
-        // Only rebuild the archive when the event set actually changes — the
-        // status loop fires every 250ms, but events arrive only every few
-        // seconds. Rebuilding every tick would reload all thumbnails and flicker.
-        let _lastEventsSig = '';
-
-        // ISO "2026-07-27T10:24:33" -> "10:24:33" (사용자 요청: 시:분:초 유지).
-        function formatEventTime(ts) {
-            if (!ts) return '-';
-            const m = String(ts).match(/(\d{1,2}):(\d{2}):(\d{2})/);
-            return m ? m[0] : String(ts);
-        }
-
-        // ============ Capture / analysis cell gauge ============
-        // Fed by state.snapshot_marks — one character per completed analysis
-        // ("0" clear, "1" vehicle, "2" person, "3" both). Cells are flex-sized,
-        // so any count fits the card width; past GAUGE_MAX_CELLS several
-        // analyses share a cell and the worst outcome in the group wins.
-        // Cells stay 1:1 with captures well past any realistic session; only a
-        // marathon run starts grouping, to keep the DOM from growing unbounded.
-        const GAUGE_MAX_CELLS = 600;
-        const GAUGE_RISK_TEXT = ['감지 없음', '차량 감지', '사람 감지', '사람+차량 감지'];
-        let gaugeSignature = '';
-
-        // Analyses still to land: the queued backlog plus the one inside the
-        // model right now. Capture runs on the sampling clock and never waits
-        // for inference, so this is what keeps trailing after playback ends.
-        function remainingAnalyses(state) {
-            return Number(state.analysis_backlog || 0) + (state.analysis_in_flight ? 1 : 0);
-        }
-
-        function renderSnapshotGauge(state) {
-            const marks = String(state.snapshot_marks || '');
-            const captured = Number(state.snapshot_count || 0);
-            const analyzed = marks.length;
-            const isStream = !!state.is_stream;
-
-            if (!captured) {
-                snapshotGauge.classList.remove('show');
-                gaugeSignature = '';
-                return;
-            }
-            snapshotGauge.classList.add('show');
-
-            // Only draw what exists. Pre-drawing the clip's estimated slot
-            // count filled the row from the first frame, so the cells could
-            // never accumulate — and the estimate was unreliable anyway. A
-            // stream additionally drops frames it can never catch up on, so it
-            // counts only completed analyses.
-            const total = isStream
-                ? Math.max(analyzed, 1)
-                : Math.max(captured, analyzed, 1);
-            const binSize = Math.max(1, Math.ceil(total / GAUGE_MAX_CELLS));
-            const cellCount = Math.ceil(total / binSize);
-
-            const signature = `${total}|${captured}|${marks}`;
-            if (signature !== gaugeSignature) {
-                gaugeSignature = signature;
-                const captureCells = [];
-                const analysisCells = [];
-
-                for (let cell = 0; cell < cellCount; cell += 1) {
-                    const start = cell * binSize;
-                    const end = Math.min(total, start + binSize);
-
-                    let captureClass = 'gauge-cell';
-                    if (end <= captured) captureClass += ' cap-full';
-                    else if (start < captured) captureClass += ' cap-partial';
-                    captureCells.push(`<i class="${captureClass}"></i>`);
-
-                    let worst = -1;
-                    let pending = false;
-                    let skipped = false;
-                    for (let i = start; i < end; i += 1) {
-                        if (i >= analyzed) {
-                            if (i < captured) pending = true;   // queued, still to come
-                            continue;
-                        }
-                        // "4" = captured but never analyzed (backlog dropped it).
-                        // Kept out of `worst` so it can't read as "감지 없음".
-                        if (marks[i] === '4') skipped = true;
-                        else worst = Math.max(worst, Number(marks[i]) || 0);
-                    }
-
-                    let cls = 'gauge-cell';
-                    let tip = '';
-                    if (worst >= 0) {
-                        cls += ` r${worst}`;
-                        tip = binSize === 1
-                            ? `${start + 1}번째 · ${GAUGE_RISK_TEXT[worst]}`
-                            : `${start + 1}~${end}번째 · 최고 ${GAUGE_RISK_TEXT[worst]}`;
-                    } else if (skipped) {
-                        cls += ' skipped';
-                        tip = `${start + 1}번째 · 미분석(대기열 초과)`;
-                    } else if (pending) {
-                        cls += ' busy';
-                        tip = `${start + 1}번째 · 분석 대기`;
-                    } else {
-                        tip = `${start + 1}번째 · 미캡처`;
-                    }
-                    analysisCells.push(`<i class="${cls}" title="${tip}"></i>`);
-                }
-
-                // Follow the newest cell, unless the user has scrolled back to
-                // look at earlier ones.
-                const wasAtEnd = gaugeScroll.scrollWidth - gaugeScroll.clientWidth
-                    - gaugeScroll.scrollLeft < 40;
-                gaugeCaptureTrack.innerHTML = captureCells.join('');
-                gaugeAnalysisTrack.innerHTML = analysisCells.join('');
-                if (wasAtEnd) gaugeScroll.scrollLeft = gaugeScroll.scrollWidth;
-            }
-
-            // Just the running count. The denominator used to be a duration-
-            // based estimate of the slot total, but sampling runs on the wall
-            // clock — slow playback outruns it — so it could read "17 / 15".
-            // The track still shows the remaining slots visually; no number
-            // that can contradict itself.
-            gaugeCaptureValue.innerHTML = `<b>${formatNumber(captured)}</b>장`;
-
-            const detected = marks.replace(/0/g, '').length;
-            const parts = [`<b>${formatNumber(analyzed)}</b> 완료`, `감지 ${formatNumber(detected)}`];
-            // On a stream the shortfall is mostly frames intentionally skipped to
-            // stay real-time, so it is reported rather than drawn as backlog.
-            if (isStream && captured - analyzed > 0) {
-                parts.push(`미분석 ${formatNumber(captured - analyzed)}`);
-            }
-            gaugeAnalysisValue.innerHTML = parts.join(' · ');
-        }
-
         function renderRecentEvents(events) {
-            events = events || [];
-            const newest = events[0] || {};
-            const sig = `${events.length}|${newest.frame_index || ''}|${newest.timestamp || ''}`;
-            if (sig === _lastEventsSig) return;  // no change → skip the rebuild
-            _lastEventsSig = sig;
-
-            if (events.length === 0) {
+            if (!events || events.length === 0) {
                 recentEvents.innerHTML = '<div class="empty">아직 저장된 이벤트가 없습니다.</div>';
                 return;
             }
@@ -2900,25 +2262,23 @@
                 const level = String(event.risk_level || 'clear').toLowerCase();
                 const klass = riskClass(level);
                 const img = event.path
-                    ? `<img class="event-thumb" data-caption="${escapeHtml(`${formatEventTime(event.timestamp)} / ${event.path || ''}`)}" src="${toFileUrl(event.path)}?t=${encodeURIComponent(event.frame_index || idx)}" alt="event-${idx}">`
+                    ? `<img class="event-thumb" data-caption="${escapeHtml(`${event.timestamp || '-'} / ${event.path || ''}`)}" src="${toFileUrl(event.path)}?t=${encodeURIComponent(event.frame_index || idx)}" alt="event-${idx}">`
                     : '';
-                const persons = Number(event.persons || 0);
-                const vehicles = Number(event.vehicles || 0);
+                const labels = Array.isArray(event.labels) && event.labels.length
+                    ? escapeHtml(event.labels.join(', '))
+                    : 'person / vehicle';
                 return `
                     <div class="event-card">
                         ${img}
                         <div class="event-card-body">
                             <div class="event-card-head">
                                 <span class="event-risk ${klass}">${escapeHtml(String(event.risk_level || 'clear').toUpperCase())}</span>
-                                <span class="event-time">${escapeHtml(formatEventTime(event.timestamp))}</span>
+                                <span class="event-frame">frame ${Number(event.frame_index || 0)}</span>
                             </div>
-                            <div class="event-counts">
-                                <div class="event-count person ${persons ? '' : 'zero'}">
-                                    <span class="num">${persons}</span><span class="lbl">사람</span>
-                                </div>
-                                <div class="event-count vehicle ${vehicles ? '' : 'zero'}">
-                                    <span class="num">${vehicles}</span><span class="lbl">차량</span>
-                                </div>
+                            <div class="event-info">
+                                <b>사람</b> ${Number(event.persons || 0)} · <b>차량</b> ${Number(event.vehicles || 0)}<br>
+                                ${escapeHtml(event.timestamp || '-')}<br>
+                                ${labels}
                             </div>
                         </div>
                     </div>
@@ -2954,114 +2314,46 @@
         // very first run while weights download) and snap it to 100% the moment
         // model_loaded flips true.
         let enginePrepActive = false;
-        // Drives the status-poll cadence: fast while loading, slow once ready.
-        let engineIsReady = false;
+        let enginePrepTimer = null;
+        let enginePrepValue = 0;
         const enginePrepEl = document.getElementById('enginePrep');
         const enginePrepFillEl = document.getElementById('enginePrepFill');
         const enginePrepPctEl = document.getElementById('enginePrepPct');
-        const enginePrepTextEl = document.getElementById('enginePrepText');
-        const enginePrepSubEl = document.getElementById('enginePrepSub');
-        const enginePrepStagesEl = document.getElementById('enginePrepStages');
 
-        // Progress is driven entirely by the engine's `loading` snapshot — the
-        // stage list, their status and their real durations. Nothing here is
-        // interpolated: a bar that stops moving means a stage is genuinely
-        // still working, which is the whole point of showing the checklist.
-        const STAGE_MARK = {
-            done: '✓',
-            skipped: '⊘',
-            failed: '✕',
-            pending: '○',
-            running: '<span class="spinner"></span>',
-        };
-
-        function formatStageMs(ms) {
-            if (!ms) return '';
-            return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
+        function renderEnginePrep() {
+            const v = Math.max(0, Math.min(100, enginePrepValue));
+            if (enginePrepFillEl) enginePrepFillEl.style.width = `${v}%`;
+            if (enginePrepPctEl) enginePrepPctEl.textContent = `${Math.round(v)}%`;
         }
 
-        function escapeHtml(text) {
-            return String(text).replace(/[&<>"']/g, (ch) => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-            }[ch]));
-        }
-
-        let enginePrepStagesSig = '';
-
-        function renderEnginePrep(loading) {
-            if (!enginePrepEl || !loading) return;
-
-            const failed = loading.state === 'error';
-            const percent = Math.max(0, Math.min(100, Number(loading.percent) || 0));
-
-            enginePrepEl.classList.add('show');
-            enginePrepEl.classList.toggle('failed', failed);
+        function startEnginePrep() {
+            if (enginePrepActive) return;   // already running — don't reset progress
             enginePrepActive = true;
-
-            enginePrepFillEl.style.width = `${failed ? 100 : percent}%`;
-            enginePrepPctEl.textContent = failed ? '실패' : `${Math.round(percent)}%`;
-
-            if (failed) {
-                enginePrepTextEl.textContent = 'AI 엔진 준비에 실패했습니다';
-            } else if ((loading.downloads_pending || []).length) {
-                enginePrepTextEl.textContent =
-                    'AI 엔진 최초 설치 중 — 모델 가중치를 내려받고 있습니다 (수 분 소요)';
-            } else {
-                enginePrepTextEl.textContent = 'AI 엔진을 준비하고 있습니다…';
-            }
-
-            // Sub-line: what is happening right now, plus elapsed time.
-            const elapsed = formatStageMs(loading.elapsed_ms);
-            if (failed) {
-                enginePrepSubEl.textContent = loading.error || '알 수 없는 오류';
-            } else {
-                const parts = [];
-                if (loading.stage_label) parts.push(loading.stage_label);
-                if (loading.stage_detail) parts.push(loading.stage_detail);
-                if (elapsed) parts.push(`${elapsed} 경과`);
-                enginePrepSubEl.textContent = parts.join(' · ');
-            }
-
-            const stages = loading.stages || [];
-            const sig = JSON.stringify(stages);
-            if (sig === enginePrepStagesSig) return;
-            enginePrepStagesSig = sig;
-
-            enginePrepStagesEl.innerHTML = stages.map((stage) => {
-                const mark = STAGE_MARK[stage.status] || STAGE_MARK.pending;
-                const detail = stage.detail
-                    ? ` <span class="detail">${escapeHtml(stage.detail)}</span>`
-                    : '';
-                const ms = stage.status === 'done' ? formatStageMs(stage.ms) : '';
-                return `<div class="engine-prep-stage ${stage.status}">`
-                    + `<span class="mark">${mark}</span>`
-                    + `<span class="name">${escapeHtml(stage.label)}${detail}</span>`
-                    + `<span class="ms">${ms}</span>`
-                    + `</div>`;
-            }).join('');
+            enginePrepValue = 6;
+            if (enginePrepEl) enginePrepEl.classList.add('show');
+            renderEnginePrep();
+            enginePrepTimer = setInterval(() => {
+                enginePrepValue += (92 - enginePrepValue) * 0.045;
+                renderEnginePrep();
+            }, 200);
         }
 
-        function completeEnginePrep(loading) {
-            // Guard before rendering: on a renderer reload against an already
-            // loaded engine there was never a prep panel, so don't flash one.
+        function completeEnginePrep() {
+            if (enginePrepTimer) { clearInterval(enginePrepTimer); enginePrepTimer = null; }
             if (!enginePrepActive) {
                 if (enginePrepEl) enginePrepEl.classList.remove('show');
                 return;
             }
-            if (loading) renderEnginePrep(loading);
             enginePrepActive = false;
-            if (enginePrepFillEl) enginePrepFillEl.style.width = '100%';
-            if (enginePrepPctEl) enginePrepPctEl.textContent = '100%';
-            setTimeout(() => { if (enginePrepEl) enginePrepEl.classList.remove('show'); }, 700);
+            enginePrepValue = 100;
+            renderEnginePrep();
+            setTimeout(() => { if (enginePrepEl) enginePrepEl.classList.remove('show'); }, 450);
         }
 
         function hideEnginePrep() {
+            if (enginePrepTimer) { clearInterval(enginePrepTimer); enginePrepTimer = null; }
             enginePrepActive = false;
-            enginePrepStagesSig = '';
-            if (enginePrepEl) {
-                enginePrepEl.classList.remove('show');
-                enginePrepEl.classList.remove('failed');
-            }
+            if (enginePrepEl) enginePrepEl.classList.remove('show');
         }
 
         async function checkModelStatus() {
@@ -3075,147 +2367,18 @@
                 return;
             }
 
-            const loading = response.loading || null;
             setEngineBanner(null);
-
             if (response.model_loaded) {
-                completeEnginePrep(loading);
+                completeEnginePrep();
                 setEngineReady(true, response);
                 if (!isProcessing) {
                     statusLine.textContent = '모델 준비가 완료되었습니다. 드론 영상을 선택해 주세요.';
                 }
-                return;
-            }
-
-            // A failed load used to look identical to a slow one — the bar just
-            // sat there. Surface it as an error instead of pretending to load.
-            if (loading && loading.state === 'error') {
-                renderEnginePrep(loading);
-                setEngineLed('error');
+            } else {
+                startEnginePrep();
                 setEngineReady(false, response);
-                setEngineBanner(`AI 모델 로드에 실패했습니다: ${loading.error || '알 수 없는 오류'}`);
-                statusLine.textContent = 'AI 모델 로드 실패 — 엔진 로그를 확인해 주세요.';
-                return;
+                statusLine.textContent = '아직 모델을 로딩 중입니다.';
             }
-
-            renderEnginePrep(loading);
-            setEngineReady(false, response);
-            statusLine.textContent = loading && loading.stage_label
-                ? `AI 엔진 준비 중 — ${loading.stage_label}`
-                : '아직 모델을 로딩 중입니다.';
-        }
-
-        // While loading, poll fast enough that a 5-second startup still reads as
-        // motion; once ready, fall back to a slow liveness check. Self-scheduling
-        // (not setInterval) so a hung engine can never stack up requests.
-        function scheduleModelStatusPoll() {
-            const done = engineIsReady;
-            setTimeout(async () => {
-                try {
-                    await checkModelStatus();
-                } catch (err) {
-                    console.error('[UI] status poll failed:', err);
-                } finally {
-                    scheduleModelStatusPoll();
-                }
-            }, done ? 2000 : 350);
-        }
-
-        // ============ Geo tags (estimated coordinates) — DEMO overlay ============
-        // Pure front-end, additive. Uses ASSUMED telemetry (no real drone GPS yet).
-        // When SRT / live telemetry is wired in, replace GEO_TELEMETRY with parsed values.
-        const GEO_TELEMETRY = {
-            droneLat: 37.2563895,  // Dock 스테이션(이륙지점) 위도
-            droneLon: 128.3103335, // Dock 스테이션(이륙지점) 경도
-            aglMeters: 25,         // 지면 위 고도 AGL (실측: 지표면 25m)
-            groundAltMeters: 25,   // 지면 해발표고 (가정) — 대상 고도 표기용, 현장 표고로 교체 가능
-            headingDeg: 15,        // 기수 방위 (북=0, 시계방향)
-            gimbalPitchDeg: -30,   // 짐벌 pitch (실측: -30°, 비스듬히 전방·하방)
-            vFovDeg: 55,           // 카메라 수직 화각(도)
-        };
-        const geoTableBody = document.getElementById('geoTableBody');
-        const geoToggle = document.getElementById('geoToggle');
-
-        // Monoplotting: back-project a ground-contact pixel to a lat/lon on flat ground.
-        function pixelToLatLon(px, py, imgW, imgH, t) {
-            const d2r = Math.PI / 180;
-            const vFov = t.vFovDeg * d2r;
-            const hFov = 2 * Math.atan(Math.tan(vFov / 2) * (imgW / imgH));
-            const u = (px - imgW / 2) / (imgW / 2);   // right +
-            const v = (py - imgH / 2) / (imgH / 2);   // down +
-            const dx = u * Math.tan(hFov / 2);
-            const dy = v * Math.tan(vFov / 2);
-            const th = t.headingDeg * d2r, ph = t.gimbalPitchDeg * d2r;
-            const cph = Math.cos(ph), sph = Math.sin(ph);
-            const cth = Math.cos(th), sth = Math.sin(th);
-            // Camera basis in ENU (x=East, y=North, z=Up).
-            const f = [sth * cph, cth * cph, sph];   // forward (optical axis)
-            const r = [cth, -sth, 0];                // right
-            const dd = [                             // down = forward × right
-                f[1] * r[2] - f[2] * r[1],
-                f[2] * r[0] - f[0] * r[2],
-                f[0] * r[1] - f[1] * r[0],
-            ];
-            const ray = [
-                f[0] + dx * r[0] + dy * dd[0],
-                f[1] + dx * r[1] + dy * dd[1],
-                f[2] + dx * r[2] + dy * dd[2],
-            ];
-            if (ray[2] >= -1e-4) return null;        // at/above horizon → no ground hit
-            const dist = t.aglMeters / (-ray[2]);
-            const east = ray[0] * dist, north = ray[1] * dist;
-            const lat = t.droneLat + north / 111320;
-            const lon = t.droneLon + east / (111320 * Math.cos(t.droneLat * d2r));
-            return { lat, lon, alt: t.groundAltMeters };
-        }
-
-        function renderGeoTags(detections) {
-            if (!geoTableBody) return;
-            const on = !geoToggle || geoToggle.checked;
-            const card = document.getElementById('geoResultCard');
-            if (card) card.style.display = on ? '' : 'none';
-            if (!on) return;
-            const dets = Array.isArray(detections) ? detections : [];
-            if (!dets.length) {
-                geoTableBody.innerHTML = '<tr><td colspan="6"><div class="geo-empty">탐지된 대상이 없습니다.</div></td></tr>';
-                return;
-            }
-            const imgW = analysisImage.naturalWidth || 1920;
-            const imgH = analysisImage.naturalHeight || 1080;
-            geoTableBody.innerHTML = dets.map((d, i) => {
-                const px = (Number(d.x1) + Number(d.x2)) / 2;
-                const py = Number(d.y2); // bottom-center = ground contact
-                const geo = pixelToLatLon(px, py, imgW, imgH, GEO_TELEMETRY);
-                const isPerson = d.label === 'person';
-                const kls = isPerson ? 'person' : 'vehicle';
-                const kor = isPerson ? '사람' : '차량';
-                const score = d.score != null ? `${Math.round(Number(d.score) * 100)}%` : '—';
-                const coords = geo
-                    ? `<td class="geo-coord">${geo.lat.toFixed(6)}</td><td class="geo-coord">${geo.lon.toFixed(6)}</td><td class="geo-coord">${geo.alt.toFixed(0)}</td>`
-                    : `<td class="geo-coord" colspan="3">지평선 부근 · 산출 불가</td>`;
-                return `<tr><td>${i + 1}</td><td><span class="geo-cls"><span class="geo-dot ${kls}"></span>${kor}</span></td><td>${score}</td>${coords}</tr>`;
-            }).join('');
-        }
-
-        // Manual telemetry inputs → feed GEO_TELEMETRY so you can test with the
-        // drone's REAL position (read lat/lon/alt/gimbal off DJI Pilot and type it in).
-        function bindTelemetryInputs() {
-            const map = {
-                teleLat: 'droneLat', teleLon: 'droneLon', teleAgl: 'aglMeters',
-                teleHeading: 'headingDeg', telePitch: 'gimbalPitchDeg', teleVfov: 'vFovDeg',
-            };
-            Object.entries(map).forEach(([id, key]) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                el.value = GEO_TELEMETRY[key];
-                el.addEventListener('input', () => {
-                    const v = parseFloat(el.value);
-                    if (!Number.isNaN(v)) {
-                        GEO_TELEMETRY[key] = v;
-                        renderGeoTags(latestState && latestState.latest_detections);
-                    }
-                });
-            });
         }
 
         async function refreshVideoStatus() {
@@ -3270,68 +2433,20 @@
             if (liveIsStream && state.live_frame_base64) {
                 liveStreamImg.src = `data:image/jpeg;base64,${state.live_frame_base64}`;
             }
-            // The RAW panel follows the sampling clock and the analyzed panel
-            // trails it by the inference backlog, so each tag carries its own
-            // capture number — otherwise two different scenes side by side would
-            // just look like a glitch.
-            const snapSeq = Number(state.latest_snapshot_seq || 0);
-            const resultSeq = Number(state.latest_result_seq || 0);
             if (state.latest_snapshot_base64) {
                 snapshotImage.src = `data:image/jpeg;base64,${state.latest_snapshot_base64}`;
                 imagePair.classList.remove('is-waiting');
-                snapshotTag.textContent = snapSeq > 0 ? `RAW · ${formatNumber(snapSeq)}번째 캡처` : 'RAW';
             }
             if (state.latest_result_base64) {
                 analysisImage.src = `data:image/jpeg;base64,${state.latest_result_base64}`;
-                analysisTag.textContent = resultSeq > 0
-                    ? `ANALYZED · ${formatNumber(resultSeq)}번째 캡처`
-                    : 'ANNOTATED';
             }
             if (state.latest_snapshot_timestamp) {
-                const capturedAt = snapSeq > 0
-                    ? `${formatNumber(snapSeq)}번째 캡처 · ${state.latest_snapshot_timestamp}`
-                    : state.latest_snapshot_timestamp;
                 snapshotTimestamp.textContent = state.analysis_pending
-                    ? `${capturedAt} · 분석은 뒤따라 진행 중`
-                    : capturedAt;
+                    ? `${state.latest_snapshot_timestamp} · 분석 중`
+                    : state.latest_snapshot_timestamp;
             }
-
-            // Capture / analysis progress. snapshot_count ticks up in real time
-            // as frames are sampled every interval; analysis_count rises as each
-            // one finishes. The displayed snapshot image is paired with its
-            // detection (slightly delayed), so this line is the live pulse of
-            // "how many captured / which one is being analyzed now".
-            const capturedN = Number(state.snapshot_count || 0);
-            const analyzedN = Number(state.analysis_count || 0);
-            const backlogN = Number(state.analysis_backlog || 0);
-            const droppedN = Number(state.dropped_snapshots || 0);
-            if (capturedN > 0) {
-                snapshotProgress.hidden = false;
-                if (state.analysis_pending) {
-                    // Analyzing: fixed-size sliding highlight (see CSS) + the
-                    // order number of the frame currently being processed.
-                    // Capture runs on the sampling clock and never waits for
-                    // inference, so the queue depth is shown too — otherwise a
-                    // slow model just looks like the counter stalling.
-                    snapshotProgressBar.classList.add('analyzing');
-                    const nowIdx = Math.min(capturedN, analyzedN + 1);
-                    const queued = backlogN > 0 ? ` · 대기 <b>${formatNumber(backlogN)}</b>장` : '';
-                    const lost = droppedN > 0 ? ` · 미분석 <b>${formatNumber(droppedN)}</b>장` : '';
-                    snapshotProgressLabel.innerHTML =
-                        `캡처 <b>${formatNumber(capturedN)}</b>장 · <span class="now">${formatNumber(nowIdx)}번째 분석 중</span>${queued}${lost}`;
-                } else {
-                    snapshotProgressBar.classList.remove('analyzing');
-                    const lost = droppedN > 0 ? ` · 미분석 <b>${formatNumber(droppedN)}</b>장` : '';
-                    snapshotProgressLabel.innerHTML =
-                        `캡처 <b>${formatNumber(capturedN)}</b>장 · <b>${formatNumber(analyzedN)}</b>장 분석 완료${lost}`;
-                }
-            } else {
-                snapshotProgress.hidden = true;
-            }
-            renderSnapshotGauge(state);
 
             renderRecentEvents(state.recent_events || []);
-            renderGeoTags(state.latest_detections);
 
             const eventDirectory = resolveEventDirectory(state);
             if (state.latest_event_path) {
@@ -3351,15 +2466,6 @@
                     progressText.textContent = '일시정지됨';
                     setMissionState('일시정지됨', 'idle');
                     statusLine.innerHTML = '일시정지 — 진행바를 드래그해 위치를 옮긴 뒤 재개할 수 있습니다.';
-                } else if (!liveIsStream && !state.is_stream && Number(state.progress || 0) >= 99.9
-                           && remainingAnalyses(state) > 0) {
-                    // Playback reached the end while inference is still working
-                    // through the sampled tail of the clip. The session stays
-                    // "processing" until that backlog drains.
-                    progressText.textContent = '남은 스냅샷 분석 중';
-                    setMissionState('잔여 분석 중', 'active');
-                    statusLine.innerHTML =
-                        `재생 완료 · 남은 스냅샷 <span class="accent">${formatNumber(remainingAnalyses(state))}</span>장을 분석하고 있습니다.`;
                 } else {
                     progressText.textContent = '실시간 분석 중';
                     setMissionState('실시간 분석 중', 'active');
@@ -3380,17 +2486,9 @@
                     stopBtn.disabled = false;
                     enablePlaybackControls(true);
                     recDot.classList.add('idle');
-                    // Playback is done, but sampled frames may still be queued —
-                    // capture never waited for inference, so say so instead of
-                    // claiming a total that is still climbing.
-                    const stillQueued = remainingAnalyses(state);
-                    progressText.textContent = stillQueued > 0
-                        ? '재생 완료 · 남은 스냅샷 분석 중'
-                        : '분석 완료 · 위치 이동/캡처 가능';
-                    setMissionState(stillQueued > 0 ? '잔여 분석 중' : '분석 완료', 'completed');
-                    statusLine.innerHTML = stillQueued > 0
-                        ? `재생 완료 · 남은 스냅샷 <span class="accent">${formatNumber(stillQueued)}</span>장을 분석하고 있습니다.`
-                        : `분석 완료 · 총 <span class="accent">${formatNumber(state.analysis_count || 0)}</span>회 · 진행바를 옮겨 재개하거나 캡처할 수 있습니다.`;
+                    progressText.textContent = '분석 완료 · 위치 이동/캡처 가능';
+                    setMissionState('분석 완료', 'completed');
+                    statusLine.innerHTML = `분석 완료 · 총 <span class="accent">${formatNumber(state.analysis_count || 0)}</span>회 · 진행바를 옮겨 재개하거나 캡처할 수 있습니다.`;
                     return;
                 }
                 isProcessing = false;
@@ -3811,7 +2909,6 @@
 
             snapshotImage.removeAttribute('src');
             analysisImage.removeAttribute('src');
-            resetImageTags();
             recentEvents.innerHTML = '<div class="empty">이벤트 대기 중...</div>';
             snapshotTimestamp.textContent = '첫 스냅샷을 기다리는 중입니다.';
             resultPath.textContent = '감지 결과는 results/events 폴더에 저장됩니다.';
@@ -4055,9 +3152,7 @@
             setSnapshotView('split');
             snapshotImage.src = toFileUrl(picked.path);
             analysisImage.removeAttribute('src');
-            resetImageTags();  // photo mode has no capture sequence
             imagePair.classList.add('is-waiting');
-            snapshotProgress.hidden = true;  // capture progress is a video-mode concept
             snapshotTimestamp.textContent = `${basename(picked.path)} · 분석 중…`;
             statusLine.textContent = '이미지를 분석하고 있습니다…';
             loadImageBtn.disabled = true;
@@ -4197,75 +3292,19 @@
             });
         });
 
-        // Navigation: switch between top-level views (dashboard / live / events)
+        // Navigation: scroll to the matching section inside the content area
         const contentScroll = document.querySelector('.content');
-        const viewTitleEl = document.getElementById('viewTitle');
-        const viewDescEl = document.getElementById('viewDesc');
-        const VIEW_META = {
-            dashboard: { title: '대시보드', desc: '현장 관제 시스템 개요' },
-            live:      { title: '실시간 관제', desc: '드론 영상 실시간 탐지 및 분석' },
-            events:    { title: '이벤트 아카이브', desc: '위험 감지 이벤트 기록 및 상세 조회' },
-        };
+        document.querySelectorAll('.nav-item[data-scroll-to]').forEach((item) => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
+                item.classList.add('active');
 
-        function switchView(view) {
-            if (!VIEW_META[view]) return;
-            document.querySelectorAll('.nav-item[data-view]').forEach((n) => {
-                n.classList.toggle('active', n.dataset.view === view);
+                const target = document.getElementById(item.dataset.scrollTo);
+                if (!target || !contentScroll) return;
+                const top = target.offsetTop - 12;
+                contentScroll.scrollTo({ top, behavior: 'smooth' });
             });
-            document.querySelectorAll('[data-view-panel]').forEach((p) => {
-                p.classList.toggle('active', p.dataset.viewPanel === view);
-            });
-            const meta = VIEW_META[view];
-            if (viewTitleEl) viewTitleEl.textContent = meta.title;
-            if (viewDescEl) viewDescEl.textContent = meta.desc;
-            if (contentScroll) contentScroll.scrollTo({ top: 0 });
-        }
-
-        document.querySelectorAll('.nav-item[data-view]').forEach((item) => {
-            item.addEventListener('click', () => switchView(item.dataset.view));
         });
-        // Sidebar / dashboard actions that open the settings modal
-        document.querySelectorAll('[data-action="settings"]').forEach((btn) => {
-            btn.addEventListener('click', () => openSettingsModal());
-        });
-        // Dashboard quick-action buttons that jump to a view
-        document.querySelectorAll('[data-goto-view]').forEach((btn) => {
-            btn.addEventListener('click', () => switchView(btn.dataset.gotoView));
-        });
-
-        // Mirror live values onto the dashboard without touching the update logic.
-        function syncDashboardMirrors() {
-            document.querySelectorAll('[data-mirror]').forEach((el) => {
-                const src = document.getElementById(el.dataset.mirror);
-                if (src) el.textContent = src.textContent;
-            });
-            document.querySelectorAll('[data-mirror-risk]').forEach((el) => {
-                const src = document.getElementById(el.dataset.mirrorRisk);
-                if (!src) return;
-                el.textContent = src.textContent;
-                const risk = Array.from(src.classList).find((c) => c.startsWith('risk-')) || 'risk-clear';
-                el.className = `dash-risk-big ${risk}`;
-            });
-        }
-        setInterval(syncDashboardMirrors, 400);
-        syncDashboardMirrors();
-
-        // Header clock — a small touch that makes the app feel live.
-        const viewClockEl = document.getElementById('viewClock');
-        function tickClock() {
-            if (!viewClockEl) return;
-            const d = new Date();
-            const p = (n) => String(n).padStart(2, '0');
-            viewClockEl.textContent = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-        }
-        tickClock();
-        setInterval(tickClock, 1000);
-
-        // Geo tags: re-render when the toggle flips.
-        if (geoToggle) geoToggle.addEventListener('change', () => {
-            renderGeoTags(latestState && latestState.latest_detections);
-        });
-        bindTelemetryInputs();
 
         // Modal
         closeModalBtn.addEventListener('click', closePreviewModal);
@@ -4351,7 +3390,7 @@
         updateQueueBadge();
         applyMode(true);
         checkModelStatus();
-        scheduleModelStatusPoll();
+        setInterval(checkModelStatus, 1000);
     </script>
 </body>
 </html>

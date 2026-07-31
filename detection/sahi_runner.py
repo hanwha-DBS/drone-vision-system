@@ -16,12 +16,13 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from .detector import L1Detector, merge_detections
+from .detector import L1Detector, merge_detections, merge_detections_wbf
 
 
 @dataclass
 class SahiConfig:
     enabled: bool = True
+    fusion: str = "wbf"  # "wbf" fuses tile-clipped boxes; "nms" keeps one winner
     tile_size: int = 768
     overlap: float = 0.25
     min_tile_score: float = 0.0
@@ -73,7 +74,9 @@ def run_sahi(
         tile = frame[y0:y1, x0:x1]
         if tile.size == 0:
             continue
-        tile_detections = detector.predict(tile)
+        # No TTA on tiles — the per-tile cost doubles for little gain;
+        # TTA stays on the full-frame pass only.
+        tile_detections = detector.predict(tile, use_tta=False)
         for det in tile_detections:
             if det["score"] < config.min_tile_score:
                 continue
@@ -85,4 +88,5 @@ def run_sahi(
             shifted["source"] = "tile"
             all_detections.append(shifted)
 
-    return merge_detections(all_detections, iou_threshold=config.nms_iou_threshold)
+    merge_fn = merge_detections_wbf if config.fusion == "wbf" else merge_detections
+    return merge_fn(all_detections, iou_threshold=config.nms_iou_threshold)

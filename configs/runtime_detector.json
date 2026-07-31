@@ -1,39 +1,47 @@
 {
   "profile_name": "snapshot-detection-v3-5layer",
   "cpu": {
-    "model_path": "yolov8l.pt",
+    "model_path": "yolo26l.pt",
     "target_width": 1536,
-    "confidence_threshold": 0.09,
+    "confidence_threshold": 0.07,
     "inference_imgsz": 1536,
-    "architecture": "yolo",
-    "secondary_model_path": "rtdetr-l.pt",
+    "secondary_model_path": "ustc-community/dfine-large-obj2coco-e25",
     "secondary_target_width": 1536,
-    "secondary_confidence_threshold": 0.08,
+    "secondary_confidence_threshold": 0.07,
     "secondary_inference_imgsz": 1536,
-    "secondary_architecture": "rtdetr"
+    "architecture": "yolo",
+    "secondary_architecture": "dfine",
+    "tta": false
   },
   "gpu": {
-    "model_path": "yolov8l.pt",
+    "model_path": "yolo26l.pt",
     "target_width": 1792,
-    "confidence_threshold": 0.08,
+    "confidence_threshold": 0.07,
     "inference_imgsz": 1792,
-    "architecture": "yolo",
-    "secondary_model_path": "rtdetr-l.pt",
+    "secondary_model_path": "ustc-community/dfine-large-obj2coco-e25",
     "secondary_target_width": 1792,
     "secondary_confidence_threshold": 0.07,
     "secondary_inference_imgsz": 1792,
-    "secondary_architecture": "rtdetr"
+    "architecture": "yolo",
+    "secondary_architecture": "dfine",
+    "tta": true
   },
   "fast_sampling": {
     "interval_threshold_seconds": 2,
-    "model_path": "yolov8m.pt",
+    "model_path": "yolo26m.pt",
     "target_width": 1280,
-    "confidence_threshold": 0.1,
+    "confidence_threshold": 0.07,
     "inference_imgsz": 1280,
-    "architecture": "yolo",
-    "disable_secondary": true
+    "disable_secondary": true,
+    "architecture": "yolo"
   },
-  "allowed_classes": ["person", "car", "truck", "bus", "vehicle"],
+  "allowed_classes": [
+    "person",
+    "car",
+    "truck",
+    "bus",
+    "vehicle"
+  ],
   "class_aliases": {
     "person": "person",
     "car": "vehicle",
@@ -46,18 +54,18 @@
     "excavator": "vehicle"
   },
   "class_min_scores": {
-    "person": 0.12,
-    "vehicle": 0.1
+    "person": 0.25,
+    "vehicle": 0.3
   },
   "filters": {
     "person": {
-      "min_area_ratio": 0.000003,
+      "min_area_ratio": 3e-06,
       "max_area_ratio": 0.05,
       "min_aspect_ratio": 0.08,
       "max_aspect_ratio": 1.6
     },
     "vehicle": {
-      "min_area_ratio": 0.00002,
+      "min_area_ratio": 2e-05,
       "max_area_ratio": 0.3,
       "min_aspect_ratio": 0.18,
       "max_aspect_ratio": 7.2
@@ -66,23 +74,28 @@
   "ensemble": {
     "enabled": true,
     "nms_iou_threshold": 0.42,
-    "prefer_secondary_for_vehicle": true
+    "prefer_secondary_for_vehicle": true,
+    "fusion": "wbf"
   },
   "sahi": {
     "enabled": true,
     "tile_size": 768,
     "overlap": 0.25,
-    "min_tile_score": 0.0,
     "nms_iou_threshold": 0.5,
-    "max_tiles": 36
+    "max_tiles": 36,
+    "fusion": "wbf",
+    "min_tile_score": 0.0
   },
   "vlm": {
     "enabled": true,
-    "model_id": "google/siglip-base-patch16-224",
+    "model_id": "google/siglip2-base-patch16-256",
     "crop_padding": 0.1,
     "min_crop_size": 32,
-    "reject_if_top_is_negative": false,
+    "reject_if_top_is_negative": true,
     "min_positive_margin": 0.0,
+    "max_verifications": 96,
+    "auto_trust_above": 0.45,
+    "batch_size": 16,
     "positive_prompts": {
       "person": [
         "an aerial photo of a person wearing a high-visibility safety vest",
@@ -103,7 +116,10 @@
       "the metal edge of a machine arm",
       "construction debris and rubble",
       "white gravel patch on the ground",
-      "a tarp or plastic sheet"
+      "a tarp or plastic sheet",
+      "a single rock or boulder on the ground seen from above",
+      "crushed stone fragments at a quarry",
+      "a stone casting a small shadow on dirt"
     ]
   },
   "tracker": {
@@ -121,26 +137,32 @@
     "root_directory": "datasets/active_learning",
     "confidence_min": 0.3,
     "confidence_max": 0.6,
-    "crop_padding": 0.15,
     "save_vlm_rejected": true,
     "save_unconfirmed_tracks": true,
-    "max_crops_per_snapshot": 6
+    "max_crops_per_snapshot": 6,
+    "crop_padding": 0.15
   },
-  "require_confirmation_for_alarm": false,
-  "preview_jpeg_quality": 88,
+  "preview_jpeg_quality": 100,
   "preview_max_width": 1400,
   "sampling": {
     "default_interval_seconds": 3,
     "min_interval_seconds": 1,
     "max_interval_seconds": 10,
     "snapshot_queue_size": 2,
-    "result_queue_size": 4
+    "result_queue_size": 4,
+    "max_pending_snapshot_mb": 1536
   },
   "event": {
     "enabled": true,
     "save_directory": "results/events",
-    "max_recent_events": 18
+    "max_recent_events": 200
   },
   "fp16_on_cuda": true,
-  "cudnn_benchmark": true
+  "cudnn_benchmark": true,
+  "require_confirmation_for_alarm": false,
+  "cpu_runtime": {
+    "allow_sahi": false,
+    "allow_vlm": false,
+    "allow_secondary": false
+  }
 }
